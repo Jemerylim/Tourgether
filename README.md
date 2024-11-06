@@ -9,7 +9,7 @@ cd Tourgether
 
 ### 2. Frontend
 "npm install" inside client folder
-to run the front end CD into the client folder and "npm start"
+to run the front end CD into the client folder
 
 ### 3. Backend
 "npm install" at the root folder
