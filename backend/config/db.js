@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const connectDB = async () => {
   try {
     // Remove deprecated options
-    await mongoose.connect(process.env.MONGO_URI);
+    await mongoose.connect(process.env.DATABASE_URL);
     console.log('MongoDB Connected: localhost');
   } catch (error) {
     console.error('Error connecting to MongoDB:', error);
