@@ -15,12 +15,22 @@ Build the Frontend
 npm install
 ```
 
+Run the Frontend
+```bash
+npm run dev
+```
+
 ### 3. Backend
 In the Backend Folder
 
 Build the Backend
 ```bash
 npm install
+```
+
+Run the Backend
+```bash
+npm start
 ```
 
 CTRL C or command C to end server

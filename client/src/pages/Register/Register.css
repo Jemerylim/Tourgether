@@ -1,15 +1,13 @@
-/* Container for the entire login page */
-.login-container {
+.register-container {
     display: flex;
     height: 100vh;
     align-items: center;
     justify-content: center;
     background-color: #ffffff;
-    gap: 80px; 
+    gap: 80px; /* Adjust space between form and image */
     padding: 0 10%;
 }
 
-/* Logo Section */
 .logo-container {
     position: absolute;
     left: 10px;
@@ -21,8 +19,7 @@
     height: 141px;
 }
 
-/* Left Section: Form */
-.login-form-section {
+.register-form-section {
     flex: 1;
     min-width: 400px;
     max-width: 500px;
@@ -33,25 +30,19 @@
     text-align: center;
 }
 
-.login-title {
+.register-title {
     font-size: 3.0rem;
     margin-bottom: 10px;
     text-align: left;
 }
 
-.side-image{
-    height: auto;
-    width: auto;
-}
-
-
-.login-description {
+.register-description {
     color: #555;
     margin-bottom: 20px;
     text-align: left;
 }
 
-.login-form {
+.register-form {
     display: flex;
     flex-direction: column;
 }
@@ -62,7 +53,7 @@
     margin-bottom: 30px; /* Space between input groups */
 }
 
-.login-input {
+.register-input {
     padding: 12px;
     border-radius: 5px;
     border: 1px solid #ddd;
@@ -80,7 +71,7 @@
     margin-bottom: 0; 
 }
 
-.login-button {
+.register-button {
     padding: 12px;
     border: none;
     border-radius: 5px;
@@ -92,33 +83,8 @@
     width: 100%; /* Match the width of the inputs */
 }
 
-.login-button:hover {
+.register-button:hover {
     background-color: #0056b3;
-}
-
-.forgot-password {
-    margin-top: 10px;
-}
-
-.forgot-password a {
-    font-size: 14px;
-    color: #007bff;
-    text-decoration: none;
-}
-
-.google-login-container {
-    margin-top: 20px;
-    text-align: center;
-}
-
-.google-login-button {
-    background: #4285f4;
-    color: #fff;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 16px;
 }
 
 .register-text {
@@ -135,7 +101,6 @@
     text-decoration: underline;
 }
 
-/* Right Section: Image Placeholder */
 .image-placeholder-container {
     flex: 1;
     display: flex;
@@ -144,36 +109,18 @@
     padding: 20px;
 }
 
-.image-placeholder {
-    width: 200%;
-    height: 200%;
-    background-color: #ddd;
-    border-radius: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    font-size: 18px;
-    color: #999;
-}
-
-#root {
-    padding: 0;
-  }
-
-  @media (max-width: 1200px) {
-    .login-container {
-        gap: 0px; 
+@media (max-width: 1200px) {
+    .register-container {
+        gap: 0px; /* Reduce gap for smaller screens */
     }
 }
 
-  @media (max-width: 768px) {
+@media (max-width: 768px) {
     .image-placeholder-container {
-        display: none; /* Hide the image container */
+        display: none; /* Hide the image container on small screens */
     }
 
-    .login-form-section {     
+    .register-form-section {     
         min-width: 300px;
     }
-
 }
