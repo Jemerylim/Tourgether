@@ -27,6 +27,7 @@ body {
     color: #1d4e89;
     width: 250px;
     height: 141px;
+    cursor: pointer;
 }
 
 .navbar-buttons {
