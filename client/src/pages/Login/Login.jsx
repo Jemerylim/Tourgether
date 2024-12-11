@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import axios from "axios"; // Axios for API requests
-import logo from "../../assets/Tourgether-Logo.png";
 import loginImage from "../../assets/Login.png";
+import Navbar from "../../components/Navbar/Navbar";
 import "./Login.css";
 
 const Login = () => {
@@ -49,12 +49,8 @@ const Login = () => {
 
     return (
         <div className="login-container">
-            {/* Logo */}
-            <div className="logo-container">
-                <Link to="/">
-                    <img src={logo} alt="Logo" className="logo" />
-                </Link>
-            </div>
+            {/* Navbar */}
+            <Navbar />
 
             {/* Left Section: Form */}
             <div className="login-form-section">

@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios"; // For API requests
-import logo from "../../assets/Tourgether-Logo.png";
 import registerImage from "../../assets/Register.png"; // Replace with a registration-themed image
+import Navbar from "../../components/Navbar/Navbar";
 import "./Register.css"; // Import the external CSS
 
 const Register = () => {
@@ -80,16 +80,12 @@ const Register = () => {
 
   return (
     <div className="register-container">
+      {/* Navbar */}
+      <Navbar />
+
       {/* Right Section: Image Placeholder */}
       <div className="image-placeholder-container">
         <img src={registerImage} alt="side image" className="side-image" />
-      </div>
-
-      {/* Logo */}
-      <div className="logo-container">
-        <Link to="/"> {/* Link to the home page */}
-          <img src={logo} alt="Logo" className="logo" />
-        </Link>
       </div>
 
       {/* Left Section: Form */}
