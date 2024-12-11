@@ -3,7 +3,8 @@ const {
   registerUser,
   loginUser,
   getUserDetails,
-  updateUser
+  updateUser,
+  logoutUser
 } = require('../controllers/userController');
 const { protect } = require('../middlewares/authMiddleware');
 
@@ -20,5 +21,8 @@ router.get('/profile', protect, getUserDetails);
 
 // Route to update user profile (protected)
 router.put('/profile', protect, updateUser);
+
+// Route to Logout and remove tokens
+router.put('/logout', protect, logoutUser);
 
 module.exports = router;

@@ -54,6 +54,20 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
+.error-message{
+  margin-top: 1rem;
+  color: red;
+  font-size: 0.9rem;
+}
+
+.success-message {
+  margin-bottom: 1rem;
+  color: green;
+  font-size: 1rem;
+  font-weight: bold;
+  text-align: center;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;

@@ -1,19 +1,35 @@
-require('dotenv').config();
-console.log('Loaded Environment Variables:', process.env);
-
+require('dotenv').config(); // Load environment variables
 const express = require('express');
+const cors = require('cors'); // Import cors middleware
 const connectDB = require('./config/db'); // Import the connectDB function
-const userRoutes = require('./routes/userRoutes');
+const userRoutes = require('./routes/userRoutes'); // Import user routes
 
 const app = express();
 
 // Middleware to parse incoming JSON requests
 app.use(express.json());
 
-// Connect to MongoDB using the imported connectDB function
+const allowedOrigins = [
+  'http://localhost:5173', // Vite frontend during development
+  'http://localhost:3000', // Your production frontend URL
+];
+
+// CORS configuration
+app.use(cors({
+  origin: function (origin, callback) {
+    if (allowedOrigins.includes(origin) || !origin) {
+      callback(null, true); // Allow the origin
+    } else {
+      callback(new Error('Not allowed by CORS')); // Block the origin
+    }
+  },
+  credentials: true, // If using cookies or credentials
+}));
+
+// Connect to MongoDB
 connectDB();
 
-// Use the userRoutes for any request starting with /api/users
+// User routes
 app.use('/api/users', userRoutes);
 
 // Default route for testing
@@ -21,8 +37,14 @@ app.get('/', (req, res) => {
   res.send('API is running...');
 });
 
-// Use the PORT variable from the .env file or default to 3000
-const PORT = process.env.PORT || 3000;
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err.stack);
+  res.status(500).json({ message: 'Internal Server Error', error: err.message });
+});
+
+// Use the PORT variable from the .env file or default to 5000
+const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

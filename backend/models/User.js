@@ -23,7 +23,7 @@ const userSchema = new mongoose.Schema({
   },
   profilePicture: {
     type: String,
-    default: 'default-profile-pic.jpg'
+    default: 'profile-pic.jpg'
   },
   bio: {
     type: String,
@@ -38,4 +38,5 @@ const userSchema = new mongoose.Schema({
 userSchema.pre('save', hashPassword);
 
 // Export the User model
-module.exports = mongoose.model('User', userSchema);
+const User = mongoose.model('User', userSchema);
+module.exports = User;
