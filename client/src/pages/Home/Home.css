@@ -1,0 +1,26 @@
+body {
+    margin: 0;
+    overflow-x: hidden; /* Prevent horizontal scrolling */
+}
+
+/* Shape common styles */
+.shape {
+    position: absolute;
+    width: 400px; /* Adjust width */
+    height: 800px; /* Adjust height */
+    border-radius: 50%; /* Make it a circular shape */
+    background-color: #13505B; /* Use your theme color */
+    z-index: -1; /* Push behind other elements */
+}
+
+/* Left Shape */
+.shape-left {
+    top: 90%;
+    left: -200px; /* Move it off-screen for partial visibility */
+}
+
+/* Right Shape */
+.shape-right {
+    top: 15%;
+    right: -200px; /* Move it off-screen for partial visibility */
+}

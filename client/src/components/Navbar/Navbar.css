@@ -1,0 +1,66 @@
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: white;
+    z-index: 1000;
+    /* Ensure the navbar stays above other elements */
+    height: 120px;
+    /* Set a fixed height for the navbar */
+}
+
+body {
+    margin: 0;
+    padding: 0;
+}
+
+.navbar-logo h1 {
+    font-family: Arial, sans-serif;
+    font-size: 24px;
+    font-weight: bold;
+    padding-left: 50px;
+    margin: 0;
+    color: #1d4e89;
+    width: 250px;
+    height: 141px;
+}
+
+.navbar-buttons {
+    display: flex;
+    align-items: center;
+    padding-right: 100px;
+    gap: 10px;
+}
+
+.btn {
+    font-size: 16px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+}
+
+.btn.login {
+    background: none;
+    color: #007a8d;
+    font-weight: bold;
+}
+
+.btn.signup {
+    background-color: #007a8d;
+    color: white;
+    font-weight: bold;
+}
+
+.btn:hover {
+    opacity: 0.8;
+}
+
+.logo {
+    width: 250px;
+    height: auto;
+}
