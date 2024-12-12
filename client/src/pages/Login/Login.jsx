@@ -33,6 +33,7 @@ const Login = () => {
                 password,
             });
 
+            console.log("Response:", response); // Log the entire response
             // Extract the token from the response
             const { token } = response.data;
 

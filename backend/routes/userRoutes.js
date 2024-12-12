@@ -4,7 +4,8 @@ const {
   loginUser,
   getUserDetails,
   updateUser,
-  logoutUser
+  logoutUser,
+  checkEmail, 
 } = require('../controllers/userController');
 const { protect } = require('../middlewares/authMiddleware');
 
@@ -15,6 +16,9 @@ router.post('/register', registerUser);
 
 // Route for user login
 router.post('/login', loginUser);
+
+// Route to check if an email is registered
+router.get('/check-email', checkEmail); // New route added here
 
 // Route to get user profile (protected)
 router.get('/profile', protect, getUserDetails);

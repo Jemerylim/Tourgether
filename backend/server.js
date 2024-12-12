@@ -26,6 +26,15 @@ app.use(cors({
   credentials: true, // If using cookies or credentials
 }));
 
+// Middleware to log request details
+app.use((req, res, next) => {
+  console.log(`Incoming Request: ${req.method} ${req.url}`);
+  if (req.method === 'POST' || req.method === 'PUT') {
+    console.log('Request Body:', req.body);
+  }
+  next();
+});
+
 // Connect to MongoDB
 connectDB();
 

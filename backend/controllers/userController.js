@@ -69,7 +69,7 @@ const loginUser = async (req, res) => {
       maxAge: 3600000, // 1 hour
     });
 
-    res.status(200).json({ message: 'Login successful', user });
+    res.status(200).json({ message: 'Login successful', token });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -120,10 +120,27 @@ const logoutUser = (req, res) => {
   res.status(200).json({ message: 'Logout successful' });
 };
 
+const checkEmail = async (req, res) => {
+  const { email } = req.query; // Assuming the email is passed as a query parameter
+
+  try {
+    // Check if the email exists in the database
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'Email not registered' });
+    }
+
+    res.status(200).json({ message: 'Email is registered', registered: true });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   getUserDetails,
   updateUser,
-  logoutUser
+  logoutUser,
+  checkEmail
 };
