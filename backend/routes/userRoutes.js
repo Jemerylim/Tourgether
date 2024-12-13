@@ -6,6 +6,7 @@ const {
   updateUser,
   logoutUser,
   checkEmail, 
+  getIdsByEmails
 } = require('../controllers/userController');
 const { protect } = require('../middlewares/authMiddleware');
 
@@ -28,5 +29,8 @@ router.put('/profile', protect, updateUser);
 
 // Route to Logout and remove tokens
 router.put('/logout', protect, logoutUser);
+
+//Route to get all ID from emails in trip creation
+router.post("/get-ids-by-emails", getIdsByEmails);
 
 module.exports = router;

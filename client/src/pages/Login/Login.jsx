@@ -41,7 +41,7 @@ const Login = () => {
             localStorage.setItem("authToken", token);
 
             // Navigate to the dashboard or protected page
-            navigate("/dashboard");
+            navigate("/create-trip");
         } catch (error) {
             // Handle errors and show an error message
             setError(error.response?.data?.message || "An error occurred. Please try again.");

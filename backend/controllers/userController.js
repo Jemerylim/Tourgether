@@ -136,11 +136,42 @@ const checkEmail = async (req, res) => {
   }
 };
 
+const getIdsByEmails = async (req, res) => {
+  const { emails } = req.body;
+
+  if (!emails || !Array.isArray(emails)) {
+    return res.status(400).json({ message: "Emails must be an array." });
+  }
+
+  try {
+    const users = await User.find({ email: { $in: emails } }).select("_id email");
+    const userIds = users.map((user) => user._id);
+
+    // Check if any emails were not found
+    const missingEmails = emails.filter(
+      (email) => !users.some((user) => user.email === email)
+    );
+
+    if (missingEmails.length > 0) {
+      return res.status(400).json({
+        message: `The following emails are not registered: ${missingEmails.join(", ")}`,
+      });
+    }
+
+    res.status(200).json({ userIds });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+
 module.exports = {
   registerUser,
   loginUser,
   getUserDetails,
   updateUser,
   logoutUser,
-  checkEmail
+  checkEmail,
+  getIdsByEmails
 };

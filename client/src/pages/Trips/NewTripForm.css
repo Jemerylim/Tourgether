@@ -1,0 +1,169 @@
+/* General container styling */
+
+.newtripcontainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 90vh;
+    padding: 1rem;
+    overflow-y: hidden;
+    overflow-x: hidden;
+}
+  
+.card {
+    width: 100%;
+    max-width: 28rem; /* Tailwind max-w-md equivalent */
+    background-color: white;
+    padding: 1.5rem;
+    border-radius: 0.5rem; /* Tailwind rounded equivalent */
+}
+
+.heading {
+    font-size: 2.5rem; /* Tailwind text-3xl equivalent */
+    font-weight: bold;
+    margin-bottom: 1.5rem; /* Tailwind mb-6 equivalent */
+}
+
+/* Form elements */
+.label {
+    display: block;
+    color: #374151; /* Tailwind text-gray-700 equivalent */
+    font-weight: 700; /* Tailwind font-medium equivalent */
+    margin-bottom: 0.5rem; /* Tailwind mb-2 equivalent */
+    text-align: left;
+}
+
+.input {
+    width: 100%;
+    padding: 0.8rem 1rem; /* Tailwind px-4 py-2 equivalent */
+    border: 1px solid #d1d5db; /* Tailwind border-gray-300 equivalent */
+    border-radius: 0.375rem; /* Tailwind rounded equivalent */
+}
+
+
+.flex-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem; /* Tailwind gap-2 equivalent */
+    width: 100%;
+}
+
+
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    margin-top: 0.5rem; /* Tailwind mt-2 equivalent */
+    margin-bottom: 1.5rem;
+}
+
+.checkbox {
+    margin-right: 0.5rem; /* Tailwind mr-2 equivalent */
+}
+
+.checkbox-label {
+    color: #374151; /* Tailwind text-gray-700 equivalent */
+}
+
+/* Email section */
+.email-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* Tailwind grid-cols-3 equivalent */
+    gap: 0.5rem; /* Tailwind gap-2 equivalent */
+    margin-bottom: 1rem; /* Tailwind mb-4 equivalent */
+}
+
+.email-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.25rem 0.5rem; /* Tailwind px-2 py-1 equivalent */
+    background-color: #e5e7eb; /* Tailwind bg-gray-200 equivalent */
+    border-radius: 0.375rem; /* Tailwind rounded equivalent */
+}
+
+.remove-button {
+    margin-left: 0.5rem; /* Tailwind ml-2 equivalent */
+    color: #ef4444; /* Tailwind text-red-500 equivalent */
+    font-weight: bold;
+    cursor: pointer;
+}
+
+/* Button styles */
+.button {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 1rem; /* Tailwind px-4 py-2 equivalent */
+    color: white;
+    font-weight: 500; /* Tailwind font-medium equivalent */
+    border-radius: 0.375rem; /* Tailwind rounded equivalent */
+    text-align: center;
+}
+
+.button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Error messages */
+.error {
+    color: #ef4444; /* Tailwind text-red-500 equivalent */
+    font-size: 0.875rem; /* Tailwind text-sm equivalent */
+}
+
+/* Group Name container */
+.group-name-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    margin-bottom: 1.5rem; /* Add some spacing */
+}
+  
+.input-group-name {
+    padding: 0.8rem 1rem; /* Ensure consistent padding */
+    border: 1px solid #d1d5db; /* Tailwind border-gray-300 equivalent */
+    border-radius: 0.375rem; /* Tailwind rounded equivalent */
+}
+  
+/* Flex container for Date fields */
+.date-container {
+    display: flex;
+    flex-direction: column; /* Stack label and inputs vertically */
+    width: 100%; /* Ensure it spans the full card width */
+}
+  
+.input-date {
+    flex: 1; /* Allow the inputs to take equal width */
+    width: 100%; /* Ensure they fill the container */
+    min-width: 170px; /* Optional: Prevent them from becoming too small */
+    padding: 0.8rem 1rem; /* Add consistent padding */
+    border: 1px solid #d1d5db; /* Tailwind border-gray-300 equivalent */
+    border-radius: 0.375rem; /* Tailwind rounded equivalent */
+    box-sizing: border-box; /* Include padding in the width calculation */
+}
+
+/* Forcing consistency when disabled */
+.input-date:disabled {
+    background-color: #e5e7eb; /* Tailwind bg-gray-200 equivalent */
+    cursor: not-allowed;
+    color: #9ca3af; /* Make text lighter for disabled state */
+    min-width: 170px;
+}
+
+.email-input {
+    flex: 3; /* Make the email input take up 3 parts of the available space */
+    padding: 0.5rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+  }
+  
+  .add-button {
+    flex: 1; /* Make the button take up 1 part of the available space */
+    padding: 0.5rem; /* Ensure consistent padding */
+    color: white;
+    font-weight: 500;
+    border-radius: 0.375rem;
+    text-align: center;
+    border: none;
+    cursor: pointer;
+  }

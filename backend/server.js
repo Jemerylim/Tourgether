@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors'); // Import cors middleware
 const connectDB = require('./config/db'); // Import the connectDB function
 const userRoutes = require('./routes/userRoutes'); // Import user routes
+const tripRoutes = require('./routes/tripRoutes'); // Import trip routes
 
 const app = express();
 
@@ -40,6 +41,9 @@ connectDB();
 
 // User routes
 app.use('/api/users', userRoutes);
+
+// Trip routes
+app.use('/api/trips', tripRoutes); 
 
 // Default route for testing
 app.get('/', (req, res) => {
