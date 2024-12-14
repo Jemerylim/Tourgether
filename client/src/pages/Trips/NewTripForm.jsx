@@ -66,9 +66,31 @@ const CreateTrip = () => {
   };
 
   const handleSubmit = async () => {
-    if (new Date(endDate) < new Date(startDate)) {
-      setError("End date cannot be earlier than start date.");
-      return;
+    const today = new Date().setHours(0, 0, 0, 0); // Get today's date at midnight
+    if (!pickThroughVote) {
+        // Validate startDate and endDate
+        if (!startDate) {
+            setError("Start date cannot be blank.");
+            return;
+        }
+        if (new Date(startDate) < today) {
+            setError("Start date cannot be before today.");
+            return;
+        }
+
+        if (!endDate) {
+            setError("End date cannot be blank.");
+            return;
+        }
+        if (new Date(endDate) < today) {
+            setError("End date cannot be before today.");
+            return;
+        }
+
+        if (new Date(endDate) < new Date(startDate)) {
+            setError("End date cannot be earlier than start date.");
+            return;
+        }
     }
   
     if (groupEmails.length === 0) {
@@ -118,8 +140,10 @@ const CreateTrip = () => {
           },
         }
       );
-      const { id } = tripResponse.data; // Assuming the created trip ID is returned in the response
-
+      console.log(tripResponse.data.data._id)
+      console.log(tripResponse.data.data)
+      const id = tripResponse.data.data._id;
+      console.log(id)
         // Redirect to the trip details page
         navigate(`/trip/${id}`);
   
