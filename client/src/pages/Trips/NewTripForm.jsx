@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import axios from "axios";
 import Navbar from "../../components/Navbar/Navbar";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import "./NewTripForm.css";
 
 const CreateTrip = () => {
+    const navigate = useNavigate();
   const [groupName, setGroupName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -15,7 +17,7 @@ const CreateTrip = () => {
   // Function to validate email using the API
   const validateEmail = async (email) => {
     try {
-      const response = await axios.get(`/api/users/check-email`, {
+      const response = await axios.get(`http://localhost:5000/api/users/check-email`, {
         params: { email },
       });
       return response.data.registered; // Assuming the API returns { registered: true/false }
@@ -35,6 +37,12 @@ const CreateTrip = () => {
     if (groupEmails.length >= 10) {
       setError("You can only add up to 10 emails.");
       return;
+    }
+    const loggedInEmail = localStorage.getItem("userEmail"); // Retrieve the current user's email from localStorage
+
+    if (emailInput === loggedInEmail) {
+        setError("You cannot add your own email to the group.");
+        return;
     }
 
     setError(""); // Clear any previous error
@@ -58,38 +66,74 @@ const CreateTrip = () => {
   };
 
   const handleSubmit = async () => {
+    if (new Date(endDate) < new Date(startDate)) {
+      setError("End date cannot be earlier than start date.");
+      return;
+    }
+  
     if (groupEmails.length === 0) {
       setError("Please add at least one email to the group.");
       return;
     }
-
+  
+    const authToken = localStorage.getItem("authToken"); // Retrieve the token from localStorage or wherever it's stored
+  
+    if (!authToken) {
+      setError("Authorization token is missing. Please log in again.");
+      return;
+    }
+  
     setError(""); // Clear previous errors
-
+  
     try {
       // Map emails to user IDs
-      const response = await axios.post(`/api/users/get-ids-by-emails`, {
-        emails: groupEmails,
-      });
-
+      const response = await axios.post(
+        "http://localhost:5000/api/users/get-ids-by-emails",
+        {
+          emails: groupEmails,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`, // Include the token in the headers
+          },
+        }
+      );
+  
       const { userIds } = response.data; // Expecting { userIds: [...] }
-
+  
       const tripDetails = {
         name: groupName,
         members: userIds,
         startDate: pickThroughVote ? "" : startDate, // Send empty string if 'Pick through vote' is selected
         endDate: pickThroughVote ? "" : endDate, // Send empty string if 'Pick through vote' is selected
       };
-
+  
       // Call to create trip
-      const tripResponse = await axios.post(`/api/trips/create-trip`, tripDetails);
+      const tripResponse = await axios.post(
+        `http://localhost:5000/api/trips/create-trip`,
+        tripDetails,
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`, // Include the token in the headers
+          },
+        }
+      );
+      const { id } = tripResponse.data; // Assuming the created trip ID is returned in the response
 
-      alert("Trip created successfully!");
-      console.log("Created Trip:", tripResponse.data);
+        // Redirect to the trip details page
+        navigate(`/trip/${id}`);
+  
     } catch (error) {
-      console.error("Error creating trip:", error.response?.data?.message || error.message);
-      setError(error.response?.data?.message || "Server error. Please try again later.");
+      console.error(
+        "Error creating trip:",
+        error.response?.data?.message || error.message
+      );
+      setError(
+        error.response?.data?.message || "Server error. Please try again later."
+      );
     }
   };
+  
 
   return (
     <div className="newtripcontainer">
@@ -111,31 +155,47 @@ const CreateTrip = () => {
       />
     </div>
 
-    {/* Date Picker */}
-    <div className="date-container">
-      <label className="label" htmlFor="dates">
-        Date
-      </label>
-      <div className="flex-container">
-        <input
-          id="startDate"
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          disabled={pickThroughVote}
-          className="input-date"
-        />
-        <span>—</span>
-        <input
-          id="endDate"
-          type="date"
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          disabled={pickThroughVote}
-          className="input-date"
-        />
-      </div>
-    </div>
+{/* Date Picker */}
+<div className="date-container">
+  <label className="label" htmlFor="dates">
+    Date
+  </label>
+  <div className="flex-container">
+    <input
+      id="startDate"
+      type="date"
+      value={startDate}
+      onChange={(e) => {
+        setStartDate(e.target.value);
+        if (endDate && new Date(e.target.value) > new Date(endDate)) {
+          setEndDate(""); // Reset endDate if it's before the startDate
+        }
+      }}
+      disabled={pickThroughVote}
+      className="input-date"
+    />
+    <span>—</span>
+    <input
+      id="endDate"
+      type="date"
+      value={endDate}
+      onChange={(e) => {
+        const newEndDate = e.target.value;
+        if (new Date(newEndDate) < new Date(startDate)) {
+          setError("End date cannot be earlier than start date."); // Set error message
+        } else {
+          setError(""); // Clear error if valid
+          setEndDate(newEndDate); // Update endDate
+        }
+      }}
+      disabled={pickThroughVote}
+      min={startDate} // Ensure endDate is not earlier than startDate
+      className="input-date"
+    />
+  </div>
+</div>
+
+
 
     {/* Checkbox for "Pick through vote" */}
     <div className="checkbox-container">
@@ -173,7 +233,7 @@ const CreateTrip = () => {
             Add
         </button>
     </div>
-      {error && <p className="error">{error}</p>}
+      
     </div>
 
     {/* Display Added Emails */}
@@ -190,7 +250,7 @@ const CreateTrip = () => {
         </div>
       ))}
     </div>
-
+    {error && <p className="error">{error}</p>}
     {/* Submit Button */}
     <button onClick={handleSubmit} className="button">
       Create

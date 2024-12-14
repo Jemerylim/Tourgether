@@ -122,11 +122,12 @@ const logoutUser = (req, res) => {
 
 const checkEmail = async (req, res) => {
   const { email } = req.query; // Assuming the email is passed as a query parameter
-
+  console.log(email)
   try {
     // Check if the email exists in the database
     const user = await User.findOne({ email });
     if (!user) {
+      
       return res.status(404).json({ message: 'Email not registered' });
     }
 
@@ -137,7 +138,8 @@ const checkEmail = async (req, res) => {
 };
 
 const getIdsByEmails = async (req, res) => {
-  const { emails } = req.body;
+  const { emails } = req.body; // Fix: Correctly access emails from req.body
+  console.log("Emails received:", emails);
 
   if (!emails || !Array.isArray(emails)) {
     return res.status(400).json({ message: "Emails must be an array." });
@@ -163,7 +165,6 @@ const getIdsByEmails = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
 
 
 module.exports = {

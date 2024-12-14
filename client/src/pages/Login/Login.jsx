@@ -14,6 +14,13 @@ const Login = () => {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
+    const [isImageLoaded, setIsImageLoaded] = useState(false);
+
+    const preloadImage = (src) => {
+        const img = new Image();
+        img.src = src;
+        img.onload = () => setIsImageLoaded(true); 
+    };
 
     // Check if there's a success message in the state
     useEffect(() => {
@@ -21,6 +28,10 @@ const Login = () => {
             setSuccessMessage(location.state.message);
         }
     }, [location.state]);
+
+    useEffect(() => {
+        preloadImage(loginImage);
+    }, []);
 
     // Handle form submission
     const handleLogin = async (e) => {
@@ -39,6 +50,7 @@ const Login = () => {
 
             // Store the token securely
             localStorage.setItem("authToken", token);
+            localStorage.setItem("userEmail", email); 
 
             // Navigate to the dashboard or protected page
             navigate("/create-trip");
@@ -103,7 +115,12 @@ const Login = () => {
 
             {/* Right Section: Image Placeholder */}
             <div className="image-placeholder-container">
-                <img src={loginImage} alt="side image" className="side-image" />
+                {/* Show a loader or placeholder until the image is loaded */}
+                {isImageLoaded ? (
+                    <img src={loginImage} alt="side image" className="side-image" />
+                ) : (
+                    <div className="image-placeholder">Loading...</div>
+                )}
             </div>
         </div>
     );

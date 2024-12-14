@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState,useEffect} from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios"; // For API requests
 import registerImage from "../../assets/Register.png"; // Replace with a registration-themed image
@@ -16,6 +16,7 @@ const Register = () => {
     confirmPassword: "",
   });
   const [errors, setErrors] = useState([]); // To store multiple error messages
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
 
   // Handle form input changes
   const handleChange = (e) => {
@@ -24,6 +25,16 @@ const Register = () => {
       [e.target.id]: e.target.value, // Dynamically set the field
     });
   };
+
+  const preloadImage = (src) => {
+    const img = new Image();
+    img.src = src;
+    img.onload = () => setIsImageLoaded(true); 
+  };
+
+  useEffect(() => {
+    preloadImage(registerImage);
+  }, []);
 
   // Handle form submission
   const handleSubmit = async (e) => {
@@ -85,8 +96,13 @@ const Register = () => {
 
       {/* Right Section: Image Placeholder */}
       <div className="image-placeholder-container">
-        <img src={registerImage} alt="side image" className="side-image" />
-      </div>
+                {/* Show a loader or placeholder until the image is loaded */}
+                {isImageLoaded ? (
+                    <img src={registerImage} alt="side image" className="side-image" />
+                ) : (
+                    <div className="image-placeholder">Loading...</div>
+                )}
+            </div>
 
       {/* Left Section: Form */}
       <div className="register-form-section">
