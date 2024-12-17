@@ -4,7 +4,7 @@ import Home from "./pages/Home/Home";
 import Login from "./pages/Login/Login";
 import Register from "./pages/Register/Register";
 import CreateTrip from "./pages/Trips/NewTripForm"
-import TripDetails from "./pages/Trips/Trip";
+import TripDetails from "./pages/Trips/trip"
 import Dashboard from "./pages/Dashboard/Dashboard";
 
 const AppRoutes = () => (

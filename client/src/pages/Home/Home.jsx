@@ -7,7 +7,7 @@ const Home = () => {
   const navigate = useNavigate(); // React Router hook to programmatically navigate
 
   return (
-    <div>
+    <div className="homepage-layout">
       {/* Navbar */}
       <Navbar />
 
@@ -15,7 +15,7 @@ const Home = () => {
       <div className="shape shape-left"></div>
       <div className="shape shape-right"></div>
 
-      <div>
+      <div className="hometext-section">
         <h1>Welcome to Tourgether</h1>
         <p>Your ultimate collaborative travel planner. <br />
           Join forces with friends and family to create unforgettable journeys, customized itineraries, and shared memories. </p>

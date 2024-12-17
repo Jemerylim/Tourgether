@@ -1,7 +1,7 @@
 /* Container for the entire login page */
 .login-container {
     display: flex;
-    height: 100vh;
+    height: 80vh;
     align-items: center;
     justify-content: center;
     background-color: #ffffff;
@@ -161,17 +161,21 @@
     padding: 0;
   }
 
-  @media (max-width: 1200px) {
+@media (max-width: 1200px) {
     .login-container {
         gap: 0px; 
     }
-}
-
-  @media (max-width: 768px) {
-    .image-placeholder-container {
-        display: none; /* Hide the image container */
+    .side-image{
+        height: 95%;
+        width: 95%;
     }
-
+}
+@media (max-width: 990px) {
+    .image-placeholder-container {
+        display: none;
+    }
+}
+@media (max-width: 768px) {
     .login-form-section {     
         min-width: 300px;
     }

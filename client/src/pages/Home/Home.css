@@ -24,3 +24,12 @@ body {
     top: 15%;
     right: -200px; /* Move it off-screen for partial visibility */
 }
+.homepage-layout{
+  height: 80vh;
+  display: flex;
+  place-items: center;
+  width: 100vw;
+}
+.hometext-section{
+    width: 100vw;
+}

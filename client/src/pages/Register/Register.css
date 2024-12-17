@@ -1,6 +1,6 @@
 .register-container {
     display: flex;
-    height: 100vh;
+    height: 80vh;
     align-items: center;
     justify-content: center;
     background-color: #ffffff;
@@ -113,12 +113,19 @@
     .register-container {
         gap: 0px; /* Reduce gap for smaller screens */
     }
+    .side-image{
+        height: 95%;
+        width: 95%;
+    }
+}
+
+@media (max-width: 990px) {
+    .image-placeholder-container {
+        display: none;
+    }
 }
 
 @media (max-width: 768px) {
-    .image-placeholder-container {
-        display: none; /* Hide the image container on small screens */
-    }
 
     .register-form-section {     
         min-width: 300px;
