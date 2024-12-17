@@ -53,7 +53,7 @@ const Login = () => {
             localStorage.setItem("userEmail", email); 
 
             // Navigate to the dashboard or protected page
-            navigate("/create-trip");
+            navigate("/dashboard");
         } catch (error) {
             // Handle errors and show an error message
             setError(error.response?.data?.message || "An error occurred. Please try again.");
