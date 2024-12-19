@@ -104,7 +104,7 @@ const Trip = () => {
     return (
         <div className="trip-details-container">
             <Navbar />
-            <button className="back-button" onClick={() => navigate("/trips")}>
+            <button className="back-button" onClick={() => navigate("/my-trips")}>
                 Back to Trips
             </button>
             <h1 className="trip-title">{trip.name}</h1>
