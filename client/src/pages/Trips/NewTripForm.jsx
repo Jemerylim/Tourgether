@@ -126,6 +126,7 @@ const CreateTrip = () => {
       const tripDetails = {
         name: groupName,
         members: userIds,
+        description:"",
         startDate: pickThroughVote ? "" : startDate, // Send empty string if 'Pick through vote' is selected
         endDate: pickThroughVote ? "" : endDate, // Send empty string if 'Pick through vote' is selected
       };
@@ -140,8 +141,6 @@ const CreateTrip = () => {
           },
         }
       );
-      console.log(tripResponse.data.data._id)
-      console.log(tripResponse.data.data)
       const id = tripResponse.data.data._id;
       console.log(id)
         // Redirect to the trip details page

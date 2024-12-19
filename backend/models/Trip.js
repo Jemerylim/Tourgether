@@ -16,7 +16,7 @@ const tripSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
-  },
+  }, 
   description: {
     type: String,
     maxlength: 500,

@@ -4,6 +4,7 @@ const cors = require('cors'); // Import cors middleware
 const connectDB = require('./config/db'); // Import the connectDB function
 const userRoutes = require('./routes/userRoutes'); // Import user routes
 const tripRoutes = require('./routes/tripRoutes'); // Import trip routes
+const userTripDateRoutes = require('./routes/userTripDateRoutes');
 
 const app = express();
 
@@ -38,6 +39,9 @@ app.use((req, res, next) => {
 
 // Connect to MongoDB
 connectDB();
+
+// UserTripDate routes
+app.use('/api/usertripdate', userTripDateRoutes);
 
 // User routes
 app.use('/api/users', userRoutes);

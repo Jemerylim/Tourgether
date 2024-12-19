@@ -1,16 +1,20 @@
-import React, { useState,useEffect  } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import Navbar from "../../components/Navbar/Navbar";
+import CalendarComponent from "../../components/Calendar/Calendar";
 import "./Trip.css";
 
-const TripDetails = () => {
-    const { id } = useParams(); // Extract trip ID from the route
+const Trip = () => {
+    const { id } = useParams();
     const navigate = useNavigate();
     const [trip, setTrip] = useState(null);
     const [error, setError] = useState("");
+    const [selectedDates, setSelectedDates] = useState([]);
+    const [userId, setUserId] = useState(null);
+    const [submissionError, setSubmissionError] = useState("");
 
-    // Fetch trip details
+
     useEffect(() => {
         const fetchTripDetails = async () => {
             const authToken = localStorage.getItem("authToken");
@@ -18,24 +22,76 @@ const TripDetails = () => {
                 setError("Authorization token is missing. Please log in again.");
                 return;
             }
-
+    
             try {
-                const response = await axios.get(`http://localhost:5000/api/trips/${id}`, {
+                // Fetch trip details
+                const tripResponse = await axios.get(`http://localhost:5000/api/trips/${id}`, {
                     headers: {
-                        Authorization: `Bearer ${authToken}`, // Include token in headers
+                        Authorization: `Bearer ${authToken}`,
                     },
                 });
-                setTrip(response.data.data);
+                setTrip(tripResponse.data.data);
+    
+                // Fetch user details
+                const userResponse = await axios.get("http://localhost:5000/api/users/profile", {
+                    headers: {
+                        Authorization: `Bearer ${authToken}`,
+                    },
+                });
+                if (userResponse.data.user) {
+                    setUserId(userResponse.data.user._id || userResponse.data.user.id);
+                } else {
+                    setError("User information could not be retrieved. Please log in again.");
+                }
             } catch (err) {
-                console.error("Error fetching trip details:", err);
+                console.error("Error fetching trip or user details:", err);
                 setError(
-                    err.response?.data?.message || "Failed to fetch trip details. Please try again later."
+                    err.response?.data?.message || "Failed to fetch details. Please try again later."
                 );
             }
         };
-
+    
         fetchTripDetails();
     }, [id]);
+
+    const handleEventAdd = (event) => {
+        setSelectedDates([...selectedDates, event]);
+    };
+
+    const handleDatesChange = (events) => {
+        setSelectedDates(events);
+    };
+
+    const submitAvailability = async () => {
+        if (selectedDates.length === 0) {
+            setSubmissionError("Please select at least one date before submitting.");
+            return; // Block submission
+        }
+    
+        setSubmissionError(""); // Clear any previous error message
+    
+        const authToken = localStorage.getItem("authToken");
+        if (!authToken) {
+            setError("Authorization token is missing. Please log in again.");
+            return;
+        }
+    
+        try {
+            await axios.put(
+                `http://localhost:5000/api/usertripdate/trip/${id}/user/${userId}`,
+                { availDates: selectedDates.map((event) => event.start) },
+                {
+                    headers: {
+                        Authorization: `Bearer ${authToken}`,
+                    },
+                }
+            );
+            alert("Your availability has been submitted!");
+        } catch (err) {
+            console.error("Error submitting availability:", err);
+            setSubmissionError("Failed to submit availability. Please try again later.");
+        }
+    };
 
     if (error) {
         return <div className="error-message">{error}</div>;
@@ -48,41 +104,28 @@ const TripDetails = () => {
     return (
         <div className="trip-details-container">
             <Navbar />
-            <div className="trip-card">
-                <h1 className="trip-title">{trip.name}</h1>
-                <div className="trip-info">
-                    <p>
-                        <strong>Start Date:</strong>{" "}
-                        {trip.startDate ? new Date(trip.startDate).toLocaleDateString() : "To be decided"}
-                    </p>
-                    <p>
-                        <strong>End Date:</strong>{" "}
-                        {trip.endDate ? new Date(trip.endDate).toLocaleDateString() : "To be decided"}
-                    </p>
-                    <p>
-                        <strong>Picking Dates Through Vote:</strong>{" "}
-                        {trip.startDate === "" && trip.endDate === "" ? "Yes" : "No"}
-                    </p>
-                    <p>
-                        <strong>Group Members:</strong>
-                    </p>
-                    <ul className="member-list">
-                        {trip.members.map((member) => (
-                            <li key={member.id}>
-                                {member.name} ({member.email})
-                            </li>
-                        ))}
-                    </ul>
+            <button className="back-button" onClick={() => navigate("/trips")}>
+                Back to Trips
+            </button>
+            <h1 className="trip-title">{trip.name}</h1>
+            <div className="divider"></div>
+
+            {trip.startDate === null && trip.endDate === null && (
+                <div className="calendar-section">
+                    <h2>Vote for Your Available Dates</h2>
+                    <CalendarComponent
+                        initialEvents={selectedDates}
+                        onEventAdd={handleEventAdd}
+                        onDatesChange={handleDatesChange} // Track all changes to selected dates
+                    />
+                    <button className="button submit-button" onClick={submitAvailability}>
+                        Submit Availability
+                    </button>
+                    {submissionError && <p className="error-message">{submissionError}</p>}
                 </div>
-                <button
-                    className="button"
-                    onClick={() => navigate("/trips")} // Redirect to the trips list page
-                >
-                    Back to Trips
-                </button>
-            </div>
+            )}
         </div>
     );
 };
 
-export default TripDetails;
+export default Trip;

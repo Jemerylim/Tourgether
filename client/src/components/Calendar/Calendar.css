@@ -1,0 +1,9 @@
+.availability-calendar {
+    margin: 20px 0;
+}
+
+.selected {
+    background-color: #90caf9;
+    color: white;
+    border-radius: 50%;
+}

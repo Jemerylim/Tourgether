@@ -1,88 +1,64 @@
-import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
-import Navbar from "../../components/Navbar/Navbar";
-import "./TripDetails.css";
+.trip-details-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Align all child elements to the center horizontally */
+    justify-content: flex-start; /* Align from the top of the page */
+    width: 100%;
+    height: 85vh; /* Full viewport height */
+    margin: 0 auto; /* Center the container */
+    box-sizing: border-box; /* Include padding in the width/height calculation */
+    overflow: hidden; /* Prevent scrolling */
+}
 
-const TripDetails = () => {
-    const { id } = useParams(); // Extract trip ID from the route
-    const navigate = useNavigate();
-    const [trip, setTrip] = useState(null);
-    const [error, setError] = useState("");
+.back-button {
+    align-self: flex-start; /* Align the button to the top-left */
+    margin-bottom: 10px;
+    margin-left: 100px;
+    padding: 10px 20px;
+    border: solid 4px;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    display: inline-block;
+    border-color: #0C7489;
+    background-color: white;
+    color: black;
+}
 
-    // Fetch trip details
-    useEffect(() => {
-        const fetchTripDetails = async () => {
-            const authToken = localStorage.getItem("authToken");
-            if (!authToken) {
-                setError("Authorization token is missing. Please log in again.");
-                return;
-            }
 
-            try {
-                const response = await axios.get(`http://localhost:5000/api/trips/${id}`, {
-                    headers: {
-                        Authorization: `Bearer ${authToken}`, // Include token in headers
-                    },
-                });
-                setTrip(response.data);
-            } catch (err) {
-                console.error("Error fetching trip details:", err);
-                setError(
-                    err.response?.data?.message || "Failed to fetch trip details. Please try again later."
-                );
-            }
-        };
+.trip-title {
+    font-size: 28px;
+    font-weight: bold;
+    align-self: flex-start; /* Align title to the left */
+    width: 100%;
+    padding: 0px;
+    margin: 0px;
+}
 
-        fetchTripDetails();
-    }, [id]);
+.divider {
+    width: 70%;
+    height: 3px;
+    background-color: #ddd;
+}
 
-    if (error) {
-        return <div className="error-message">{error}</div>;
-    }
+.calendar-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center the calendar horizontally */
+    justify-content: center; /* Center the calendar vertically */
+    width: 90%; 
+    max-width: 1200px; /* Limit the maximum width */
+    height: 100%; /* Make the calendar section take up the remaining height */
+    padding: 10px;
+}
 
-    if (!trip) {
-        return <div className="loading-message">Loading trip details...</div>;
-    }
+.react-big-calendar {
+    width: 100%; /* Make the calendar fill its container */
+    height: calc(100% - 60px); /* Fill the container but leave space for padding or headers */
+}
 
-    return (
-        <div className="trip-details-container">
-            <Navbar />
-            <div className="trip-card">
-                <h1 className="trip-title">{trip.name}</h1>
-                <div className="trip-info">
-                    <p>
-                        <strong>Start Date:</strong>{" "}
-                        {trip.startDate ? new Date(trip.startDate).toLocaleDateString() : "To be decided"}
-                    </p>
-                    <p>
-                        <strong>End Date:</strong>{" "}
-                        {trip.endDate ? new Date(trip.endDate).toLocaleDateString() : "To be decided"}
-                    </p>
-                    <p>
-                        <strong>Picking Dates Through Vote:</strong>{" "}
-                        {trip.startDate === "" && trip.endDate === "" ? "Yes" : "No"}
-                    </p>
-                    <p>
-                        <strong>Group Members:</strong>
-                    </p>
-                    <ul className="member-list">
-                        {trip.members.map((member) => (
-                            <li key={member.id}>
-                                {member.name} ({member.email})
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-                <button
-                    className="button"
-                    onClick={() => navigate("/trips")} // Redirect to the trips list page
-                >
-                    Back to Trips
-                </button>
-            </div>
-        </div>
-    );
-};
+.submit-button{
+    margin-top: 10px;
+    width: 35%;
+}
 
-export default TripDetails;

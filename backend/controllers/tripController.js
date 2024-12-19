@@ -3,7 +3,7 @@ const User = require('../models/User'); // Assuming User model is in the same fo
 
 // Create a new trip
 exports.createTrip = async (req, res) => {
-  const { name, members, description, startDate, endDate } = req.body;
+  const { name, members, startDate, endDate, description } = req.body;
   const createdBy = req.user._id; // Assuming the authenticated user's ID is available in req.user
 
   try {
@@ -140,6 +140,38 @@ exports.deleteTrip = async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'Trip deleted successfully',
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
+// Get all trips for a specific user
+exports.getTripsByUser = async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    // Find trips where the user is a member or the creator
+    const trips = await Trip.find({
+      $or: [{ members: userId }, { createdBy: userId }],
+    })
+      .populate('members', 'name email') // Populate members with name and email
+      .populate('createdBy', 'name email'); // Populate creator's name and email
+
+    if (trips.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No trips found for this user',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: trips,
     });
   } catch (error) {
     res.status(500).json({

@@ -5,6 +5,7 @@ const {
   getTrips,
   deleteTrip,
   updateTrip,
+  getTripsByUser
 } = require('../controllers/tripController');
 const { protect } = require('../middlewares/authMiddleware');
 
@@ -24,5 +25,8 @@ router.put('/:id', protect, updateTrip);
 
 // Route to delete a trip by ID (protected route)
 router.delete('/:id', protect, deleteTrip);
+
+// Get all trips for a specific user
+router.get('/user/:userId', getTripsByUser);
 
 module.exports = router;
