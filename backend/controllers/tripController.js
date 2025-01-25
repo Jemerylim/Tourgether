@@ -1,10 +1,14 @@
-const Trip = require('../models/Trip'); // Assuming Trip model is in the models folder
-const User = require('../models/User'); // Assuming User model is in the same folder
+const Trip = require('../models/Trip');
+const User = require('../models/User');
 
 // Create a new trip
 exports.createTrip = async (req, res) => {
   const { name, members, startDate, endDate, description } = req.body;
-  const createdBy = req.user._id; // Assuming the authenticated user's ID is available in req.user
+  const createdBy = req.user._id;
+
+  if (!name || !members || members.length === 0) {
+    return res.status(400).json({ message: 'Name and members are required to create a trip' });
+  }
 
   try {
     // Validate members
@@ -13,7 +17,7 @@ exports.createTrip = async (req, res) => {
       return res.status(400).json({ message: 'One or more members are not valid users' });
     }
 
-    // Create a new trip
+    // Create the trip
     const trip = await Trip.create({
       name,
       members,
@@ -28,9 +32,11 @@ exports.createTrip = async (req, res) => {
       data: trip,
     });
   } catch (error) {
+    console.error('Error creating trip:', error);
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: 'Error creating trip',
+      error: error.message,
     });
   }
 };
@@ -39,17 +45,19 @@ exports.createTrip = async (req, res) => {
 exports.getTrips = async (req, res) => {
   try {
     const trips = await Trip.find()
-      .populate('members', 'name email') // Populate members with name and email
-      .populate('createdBy', 'name email'); // Populate creator's name and email
+      .populate('members', 'name email')
+      .populate('createdBy', 'name email');
 
     res.status(200).json({
       success: true,
       data: trips,
     });
   } catch (error) {
+    console.error('Error fetching trips:', error);
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: 'Error fetching trips',
+      error: error.message,
     });
   }
 };
@@ -75,9 +83,11 @@ exports.getTrip = async (req, res) => {
       data: trip,
     });
   } catch (error) {
+    console.error('Error fetching trip:', error);
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: 'Error fetching trip',
+      error: error.message,
     });
   }
 };
@@ -88,7 +98,7 @@ exports.updateTrip = async (req, res) => {
   const { name, members, description, startDate, endDate } = req.body;
 
   try {
-    // Validate members if they are being updated
+    // Validate members if provided
     if (members) {
       const validMembers = await User.find({ _id: { $in: members } });
       if (validMembers.length !== members.length) {
@@ -116,9 +126,11 @@ exports.updateTrip = async (req, res) => {
       data: trip,
     });
   } catch (error) {
+    console.error('Error updating trip:', error);
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: 'Error updating trip',
+      error: error.message,
     });
   }
 };
@@ -142,13 +154,14 @@ exports.deleteTrip = async (req, res) => {
       message: 'Trip deleted successfully',
     });
   } catch (error) {
+    console.error('Error deleting trip:', error);
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: 'Error deleting trip',
+      error: error.message,
     });
   }
 };
-
 
 // Get all trips for a specific user
 exports.getTripsByUser = async (req, res) => {
@@ -159,24 +172,20 @@ exports.getTripsByUser = async (req, res) => {
     const trips = await Trip.find({
       $or: [{ members: userId }, { createdBy: userId }],
     })
-      .populate('members', 'name email') // Populate members with name and email
-      .populate('createdBy', 'name email'); // Populate creator's name and email
+      .populate('members', 'name email')
+      .populate('createdBy', 'name email');
 
-    if (trips.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'No trips found for this user',
-      });
-    }
-
+    // Return 200 with an empty array if no trips are found
     res.status(200).json({
       success: true,
       data: trips,
     });
   } catch (error) {
+    console.error('Error fetching user trips:', error);
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: 'Error fetching user trips',
+      error: error.message,
     });
   }
 };

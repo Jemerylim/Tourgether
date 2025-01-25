@@ -52,6 +52,11 @@ body {
     color: #007a8d;
     font-weight: bold;
 }
+.btn.profile {
+    background: none;
+    color: #007a8d;
+    font-weight: bold;
+}
 
 .btn.signup {
     background-color: #007a8d;

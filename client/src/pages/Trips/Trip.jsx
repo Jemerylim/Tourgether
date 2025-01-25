@@ -11,9 +11,9 @@ const Trip = () => {
     const [trip, setTrip] = useState(null);
     const [error, setError] = useState("");
     const [selectedDates, setSelectedDates] = useState([]);
+    const [allAvailabilities, setAllAvailabilities] = useState([]);
     const [userId, setUserId] = useState(null);
     const [submissionError, setSubmissionError] = useState("");
-
 
     useEffect(() => {
         const fetchTripDetails = async () => {
@@ -43,16 +43,41 @@ const Trip = () => {
                 } else {
                     setError("User information could not be retrieved. Please log in again.");
                 }
+    
+                // Fetch all availabilities for the trip
+                const availabilityResponse = await axios.get(`http://localhost:5000/api/usertripdate/trip/${id}`, {
+                    headers: {
+                        Authorization: `Bearer ${authToken}`,
+                    },
+                });
+    
+                // Log the raw availability data
+                console.log("Raw availability data:", availabilityResponse.data);
+    
+                // Flatten availabilities for all users
+                const availabilities = availabilityResponse.data.map((availability) =>
+                    availability.availDates.map((date) => ({
+                        id: availability.userId._id,
+                        title: `${availability.userId.name}'s availability`,
+                        start: new Date(date), // Convert to Date object
+                        end: new Date(date), // Assuming single-day events
+                    }))
+                ).flat(); // Flatten nested arrays into a single array
+    
+                console.log("Processed availabilities for calendar:", availabilities);
+    
+                setAllAvailabilities(availabilities);
             } catch (err) {
-                console.error("Error fetching trip or user details:", err);
+                console.error("Error fetching data:", err);
                 setError(
-                    err.response?.data?.message || "Failed to fetch details. Please try again later."
+                    err.response?.data?.message || "Failed to fetch data. Please try again later."
                 );
             }
         };
     
         fetchTripDetails();
     }, [id]);
+    
 
     const handleEventAdd = (event) => {
         setSelectedDates([...selectedDates, event]);
@@ -65,17 +90,17 @@ const Trip = () => {
     const submitAvailability = async () => {
         if (selectedDates.length === 0) {
             setSubmissionError("Please select at least one date before submitting.");
-            return; // Block submission
+            return;
         }
-    
-        setSubmissionError(""); // Clear any previous error message
-    
+
+        setSubmissionError("");
+
         const authToken = localStorage.getItem("authToken");
         if (!authToken) {
             setError("Authorization token is missing. Please log in again.");
             return;
         }
-    
+
         try {
             await axios.put(
                 `http://localhost:5000/api/usertripdate/trip/${id}/user/${userId}`,
@@ -110,20 +135,24 @@ const Trip = () => {
             <h1 className="trip-title">{trip.name}</h1>
             <div className="divider"></div>
 
-            {trip.startDate === null && trip.endDate === null && (
-                <div className="calendar-section">
-                    <h2>Vote for Your Available Dates</h2>
-                    <CalendarComponent
-                        initialEvents={selectedDates}
-                        onEventAdd={handleEventAdd}
-                        onDatesChange={handleDatesChange} // Track all changes to selected dates
-                    />
-                    <button className="button submit-button" onClick={submitAvailability}>
-                        Submit Availability
-                    </button>
-                    {submissionError && <p className="error-message">{submissionError}</p>}
-                </div>
-            )}
+            {/* For future date voting 
+            <div className="calendar-section">
+                <h2>All Users' Availabilities</h2>
+                <CalendarComponent
+                    initialEvents={allAvailabilities}
+                    onEventAdd={handleEventAdd}
+                    onDatesChange={handleDatesChange}
+                />
+                {trip.startDate === null && trip.endDate === null && (
+                    <>
+                        <h2>Your Available Dates</h2>
+                        <button className="button submit-button" onClick={submitAvailability}>
+                            Submit Availability
+                        </button>
+                        {submissionError && <p className="error-message">{submissionError}</p>}
+                    </>
+                )}
+            </div> */}
         </div>
     );
 };

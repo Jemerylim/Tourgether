@@ -220,7 +220,8 @@ const CreateTrip = () => {
 
 
 
-    {/* Checkbox for "Pick through vote" */}
+    {/* for future date voting
+    Checkbox for "Pick through vote" 
     <div className="checkbox-container">
       <input
         id="pickThroughVote"
@@ -233,7 +234,7 @@ const CreateTrip = () => {
         Pick through vote
       </label>
     </div>
-
+    */}
     {/* Email Input */}
     <div className="mb-4">
       <label className="label" htmlFor="email">

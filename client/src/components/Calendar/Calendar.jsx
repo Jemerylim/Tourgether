@@ -1,21 +1,33 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Calendar, momentLocalizer } from "react-big-calendar";
 import moment from "moment";
 import "react-big-calendar/lib/css/react-big-calendar.css";
+import "./Calendar.css";
 
 const localizer = momentLocalizer(moment);
 
 const CalendarComponent = ({ initialEvents = [], onEventAdd, onDatesChange }) => {
-    const [events, setEvents] = useState(initialEvents);
+    const [events, setEvents] = useState(() =>
+        initialEvents.map((event) => ({
+            ...event,
+            start: new Date(event.start),
+            end: new Date(event.end),
+        }))
+    );
+
+    useEffect(() => {
+        console.log("Initial events loaded into calendar:", initialEvents);
+    }, [initialEvents]);
 
     const handleSelectSlot = (slotInfo) => {
         const selectedDate = slotInfo.start;
         const today = new Date();
-        if (selectedDate < today.setHours(0, 0, 0, 0)) {
+        today.setHours(0, 0, 0, 0);
+
+        if (selectedDate < today) {
             return; // Prevent past date selection
         }
 
-        // Check if the date is already selected
         const isAlreadySelected = events.some(
             (event) => event.start.toDateString() === selectedDate.toDateString()
         );
@@ -23,12 +35,10 @@ const CalendarComponent = ({ initialEvents = [], onEventAdd, onDatesChange }) =>
         let updatedEvents;
 
         if (isAlreadySelected) {
-            // Remove the event if it's already selected
             updatedEvents = events.filter(
                 (event) => event.start.toDateString() !== selectedDate.toDateString()
             );
         } else {
-            // Add a new event
             const newEvent = {
                 title: "Available",
                 start: selectedDate,
@@ -36,65 +46,66 @@ const CalendarComponent = ({ initialEvents = [], onEventAdd, onDatesChange }) =>
                 allDay: true,
             };
             updatedEvents = [...events, newEvent];
-            if (onEventAdd) onEventAdd(newEvent); // Notify parent about the new event
+            if (onEventAdd) onEventAdd(newEvent);
         }
 
         setEvents(updatedEvents);
-        if (onDatesChange) onDatesChange(updatedEvents); // Notify parent about updated events
+        if (onDatesChange) onDatesChange(updatedEvents);
     };
 
-    const dayPropGetter = (date) => {
-        const today = new Date();
-        if (date < today.setHours(0, 0, 0, 0)) {
-            return {
-                style: {
-                    backgroundColor: "#f5f5f5", // Light gray background
-                    pointerEvents: "none", // Disable interaction
-                    color: "#ccc", // Optional: Light text color
-                },
-            };
-        }
-        return {};
+    const renderDayWithCircles = (date) => {
+        const dayEvents = events.filter(
+            (event) => event.start.toDateString() === date.toDateString()
+        );
+
+        console.log("Date:", date, "Day Events:", dayEvents); // Debugging
+
+        return (
+            <div className="custom-day-wrapper">
+                <div className="custom-day-number">{date.getDate()}</div>
+                <div className="availability-circles">
+                    {dayEvents.map((event, index) => (
+                        <div
+                            key={index}
+                            className="availability-circle"
+                            style={{
+                                backgroundColor: getRandomColor(event.id || `default-${index}`),
+                            }}
+                            title={event.title || "No title available"}
+                        ></div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
+    const getRandomColor = (id = "default") => {
+        const hash = Array.from(id).reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const colors = [
+            "#ff7f7f", "#7f7fff", "#7fff7f", "#ffbf7f", "#7fffbf", "#bf7fff", "#ffff7f",
+        ];
+        return colors[hash % colors.length];
     };
 
     return (
         <div style={{ width: "90%", maxWidth: "1200px", margin: "0 auto", height: "500px" }}>
-            <style>
-                {`
-                    .rbc-toolbar {
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        gap: 10px;
-                    }
-
-                    .rbc-toolbar-label {
-                        font-size: 1.5rem;
-                        font-weight: bold;
-                        text-align: center;
-                    }
-
-                    .rbc-btn-group {
-                        display: flex;
-                        justify-content: center;
-                        gap: 10px;
-                    }
-                `}
-            </style>
             <Calendar
                 localizer={localizer}
                 events={events}
                 startAccessor="start"
                 endAccessor="end"
                 selectable
-                onSelectSlot={handleSelectSlot} // Handle single selection
+                onSelectSlot={handleSelectSlot}
                 defaultView="month"
                 views={["month"]}
-                min={new Date()} // Block dates before today
-                dayPropGetter={dayPropGetter}
+                dayPropGetter={(date) => ({ className: "custom-date-cell" })}
+                eventPropGetter={() => ({ style: { display: "none" } })} // Hide default events
+                components={{
+                    month: {
+                        dateHeader: ({ date }) => renderDayWithCircles(date),
+                    },
+                }}
                 style={{ width: "100%", height: "100%" }}
-                longPressThreshold={9999} // Effectively disable drag
-                popup={false} // Disable event popups if needed
             />
         </div>
     );

@@ -1,9 +1,30 @@
-.availability-calendar {
-    margin: 20px 0;
+.custom-day-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    height: 100%;
+    position: relative;
+    text-align: center;
 }
 
-.selected {
-    background-color: #90caf9;
-    color: white;
+.custom-day-number {
+    font-size: 14px;
+    font-weight: normal;
+    margin-bottom: 5px;
+}
+
+.availability-circles {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 3px;
+    margin-top: 5px;
+}
+
+.availability-circle {
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
+    background-color: #90caf9; /* Default color */
 }
