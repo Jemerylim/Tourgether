@@ -7,6 +7,8 @@ import CreateTrip from "./pages/Trips/NewTripForm"
 import TripDetails from "./pages/Trips/trip"
 import Dashboard from "./pages/Dashboard/Dashboard";
 import MyTrips from "./pages/Trips/MyTrips";
+import Quiz from "./pages/Quiz/Quiz";
+import { Result } from "./pages/Quiz/Quiz";
 
 const AppRoutes = () => (
     <Routes>
@@ -17,6 +19,8 @@ const AppRoutes = () => (
         <Route path="/create-trip" element={<CreateTrip />} />
         <Route path="/trip/:id" element={<TripDetails />} />
         <Route path="/my-trips" element={<MyTrips />} />
+        <Route path="/quiz" element={<Quiz />} />
+        <Route path="/result" element={<Result />} />
     </Routes>
 );
 
