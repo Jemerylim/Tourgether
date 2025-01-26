@@ -2,7 +2,16 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import Navbar from "../../components/Navbar/Navbar";
-import CalendarComponent from "../../components/Calendar/Calendar";
+// import CalendarComponent from "../../components/Calendar/Calendar";
+import { useCalendarApp, ScheduleXCalendar } from "@schedule-x/react";
+import {
+  createViewDay,
+  createViewWeek,
+  createViewMonthGrid,
+  createViewMonthAgenda,
+} from "@schedule-x/calendar";
+import { createDragAndDropPlugin } from '@schedule-x/drag-and-drop'
+import "@schedule-x/theme-default/dist/index.css";
 import "./Trip.css";
 
 const Trip = () => {
@@ -14,6 +23,27 @@ const Trip = () => {
     const [allAvailabilities, setAllAvailabilities] = useState([]);
     const [userId, setUserId] = useState(null);
     const [submissionError, setSubmissionError] = useState("");
+
+    const mockEvents = [
+        {
+          id: "1",
+          title: "Team Meeting",
+          start: "2025-01-16 10:05",
+          end: "2025-01-16 11:05",
+        },
+        {
+          id: "2",
+          title: "Team Meeting",
+          start: "2025-01-16 11:05",
+          end: "2025-01-16 11:15",
+        },
+      ];
+    
+      const calendar = useCalendarApp({
+        views: [createViewDay(), createViewWeek(), createViewMonthGrid(), createViewMonthAgenda()],
+        events: mockEvents,
+        plugins: [createDragAndDropPlugin()],
+      });
 
     useEffect(() => {
         const fetchTripDetails = async () => {
@@ -134,6 +164,11 @@ const Trip = () => {
             </button>
             <h1 className="trip-title">{trip.name}</h1>
             <div className="divider"></div>
+
+            <div className="calendar-section">
+                <h2>Trip Calendar</h2>
+                <ScheduleXCalendar calendarApp={calendar} />
+            </div>
 
             {/* For future date voting 
             <div className="calendar-section">
