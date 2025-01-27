@@ -10,21 +10,36 @@
     overflow: hidden; /* Prevent scrolling */
 }
 
+.header {
+    display: flex;
+    justify-content: space-between; /* Align the back button to the left and the create button to the right */
+    align-items: center; /* Vertically align the items */
+    width: 90%; /* Ensure the header spans most of the container */
+    max-width: 1200px; /* Limit the maximum width */
+    margin: 10px auto; /* Center the header within the container */
+}
+
 .back-button {
-    align-self: flex-start; /* Align the button to the top-left */
-    margin-bottom: 10px;
-    margin-left: 100px;
-    padding: 10px 20px;
+    padding: 5px 20px;
     border: solid 4px;
     border-radius: 5px;
     font-size: 16px;
     cursor: pointer;
-    display: inline-block;
     border-color: #0C7489;
     background-color: white;
     color: black;
 }
 
+.create-event-button {
+    padding: 5px 20px;
+    border: solid 4px;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    border-color: #0C7489;
+    background-color: #0C7489;
+    color: white;
+}
 
 .trip-title {
     font-size: 28px;
@@ -35,11 +50,6 @@
     margin: 0px;
 }
 
-.divider {
-    width: 70%;
-    height: 3px;
-    background-color: #ddd;
-}
 
 .calendar-section {
     display: flex;
@@ -57,8 +67,59 @@
     height: calc(100% - 60px); /* Fill the container but leave space for padding or headers */
 }
 
-.submit-button{
+.submit-button {
     margin-top: 10px;
     width: 35%;
 }
 
+.event-form-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+  
+.event-form {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    width: 400px;
+}
+  
+.event-form h2 {
+    margin-bottom: 20px;
+}
+  
+.event-form label {
+    display: block;
+    margin-bottom: 10px;
+}
+  
+.event-form input {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+  
+.event-form button {
+    padding: 10px 15px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-right: 10px;
+}
+  
+.event-form button:hover {
+    background-color: #0056b3;
+}

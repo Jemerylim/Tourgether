@@ -5,6 +5,7 @@ const connectDB = require('./config/db'); // Import the connectDB function
 const userRoutes = require('./routes/userRoutes'); // Import user routes
 const tripRoutes = require('./routes/tripRoutes'); // Import trip routes
 const userTripDateRoutes = require('./routes/userTripDateRoutes');
+const eventRoutes = require('./routes/eventRoutes');
 
 const app = express();
 
@@ -42,6 +43,9 @@ connectDB();
 
 // UserTripDate routes
 app.use('/api/usertripdate', userTripDateRoutes);
+
+// events routes
+app.use('/api/events', eventRoutes);
 
 // User routes
 app.use('/api/users', userRoutes);
