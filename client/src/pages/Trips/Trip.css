@@ -103,23 +103,44 @@
 }
   
 .event-form input {
-    width: 100%;
-    padding: 8px;
+    width: 90%;
+    padding: 12px 8px;
     margin-bottom: 20px;
     border: 1px solid #ccc;
     border-radius: 5px;
+    background-color: black; /* Keeps the black background */
+    color: white; /* Ensures text is readable */
+    display: block; /* Ensures full width usage */
+    margin: 0 auto; /* Centers the input fields horizontally */
 }
   
 .event-form button {
-    padding: 10px 15px;
-    background-color: #007bff;
-    color: white;
-    border: none;
+    width: 120px; /* Ensures both buttons have the same width */
+    padding: 10px;
+    font-size: 16px;
     border-radius: 5px;
     cursor: pointer;
     margin-right: 10px;
 }
-  
-.event-form button:hover {
-    background-color: #0056b3;
+
+.event-form button[type="submit"] {
+    background-color: #0C7489; /* Keep Update Event button in original color */
+    color: white;
+}
+
+.cancel-button {
+    background-color: white; /* White background for Cancel */
+    color: #0C7489; /* Text color */
+    border: 2px solid ; /* Border color */
+    border-color: #0C7489;
+}
+
+.cancel-button:hover {
+    background-color: #E0F7FA; /* Light teal on hover */
+}
+
+.delete-button {
+    background-color: #e1444c; /* Red color for delete */
+    color: white;
+    border: 2px solid #e1444c;; /* Border color */
 }

@@ -10,6 +10,7 @@ import {
 import { createDragAndDropPlugin } from "@schedule-x/drag-and-drop";
 import { createCalendarControlsPlugin } from "@schedule-x/calendar-controls";
 import { createEventsServicePlugin } from "@schedule-x/events-service";
+import { createEventModalPlugin } from '@schedule-x/event-modal'
 import "@schedule-x/theme-default/dist/index.css";
 import "./Trip.css";
 import dayjs from "dayjs";
@@ -20,6 +21,33 @@ const calendarControlsPlugin = createCalendarControlsPlugin({
   showDatePicker: false,  // Hide the date picker
 });
 const eventsServicePlugin = createEventsServicePlugin();
+const eventModal = createEventModalPlugin()
+const dragAndDropPlugin = createDragAndDropPlugin({
+    callbacks: {
+      onDrop: ({ event, start, end, revert }) => {
+        console.log("Dragged Event:", event);
+        
+        if (!trip || !trip.startDate || !trip.endDate) {
+          console.warn("Trip details not loaded yet.");
+          return;
+        }
+  
+        const tripStart = dayjs(trip.startDate).format("YYYY-MM-DD");
+        const tripEnd = dayjs(trip.endDate).format("YYYY-MM-DD");
+        const newStartDate = dayjs(start).format("YYYY-MM-DD");
+        const newEndDate = dayjs(end).format("YYYY-MM-DD");
+  
+        if (newStartDate < tripStart || newEndDate > tripEnd) {
+          console.warn("Drag restricted: Event cannot be moved outside trip dates.");
+          alert(`Event must stay between ${tripStart} and ${tripEnd}`);
+          revert(); 
+        } else {
+          console.log("Event moved successfully.");
+        }
+      }
+    }
+  });
+  
 
 const Trip = () => {
   const { id } = useParams();
@@ -29,6 +57,10 @@ const Trip = () => {
   const [selectedDates, setSelectedDates] = useState([]);
   const [userId, setUserId] = useState(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+const [editingEvent, setEditingEvent] = useState(null);
+const [errorMessage, setErrorMessage] = useState("");
+
   const [newEvent, setNewEvent] = useState({
     title: "",
     date: "",
@@ -40,7 +72,21 @@ const Trip = () => {
   const calendar = useCalendarApp({
     views: [createViewDay(), createViewWeek()],
     events: [], // Initially empty
-    plugins: [createDragAndDropPlugin(), calendarControlsPlugin, eventsServicePlugin],
+    plugins: [dragAndDropPlugin, calendarControlsPlugin, eventsServicePlugin,eventModal],
+    callbacks:{
+        onDoubleClickEvent: (event) => {
+            console.log("Editing Event:", event);
+            setEditingEvent(event); // Set event to edit
+            setNewEvent({
+                title: event.title,
+                date: dayjs(event.start).format("YYYY-MM-DD"),
+                startTime: dayjs(event.start).format("HH:mm"),
+                endTime: dayjs(event.end).format("HH:mm"),
+              });
+            setIsEditing(true);
+            setShowCreateForm(true); // Show the form
+        }
+    }
   });
 
   // Dynamically set events on the calendar
@@ -131,46 +177,121 @@ const Trip = () => {
     fetchTripDetails();
   }, [id]);
 
-  const handleCreateEvent = async (e) => {
+  const handleSubmitEvent = async (e) => {
     e.preventDefault();
     const authToken = localStorage.getItem("authToken");
 
     if (!newEvent.title || !newEvent.date || !newEvent.startTime || !newEvent.endTime) {
-      alert("Please fill in all fields.");
-      return;
+        setErrorMessage("Please fill in all fields.");
+        return;
+    }
+
+    if (!trip || !trip.startDate || !trip.endDate) {
+        setErrorMessage("Trip details are missing. Please try again.");
+        return;
+    }
+
+    const tripStart = dayjs(trip.startDate).format("YYYY-MM-DD");
+    const tripEnd = dayjs(trip.endDate).format("YYYY-MM-DD");
+    const selectedDate = dayjs(newEvent.date).format("YYYY-MM-DD");
+
+    if (selectedDate < tripStart || selectedDate > tripEnd) {
+        setErrorMessage(`Event date must be between ${tripStart} and ${tripEnd}`);
+        return;
     }
 
     try {
-      const response = await axios.post(
-        "http://localhost:5000/api/events",
-        {
-          tripId: trip._id,
-          title: newEvent.title,
-          date: newEvent.date,
-          startTime: newEvent.startTime,
-          endTime: newEvent.endTime,
-        },
-        {
-          headers: { Authorization: `Bearer ${authToken}` },
+        if (isEditing && editingEvent) {
+            await axios.put(
+                `http://localhost:5000/api/events/${editingEvent.id}`,
+                {
+                    title: newEvent.title,
+                    date: newEvent.date,
+                    startTime: newEvent.startTime,
+                    endTime: newEvent.endTime,
+                },
+                { headers: { Authorization: `Bearer ${authToken}` } }
+            );
+
+            setSelectedDates((prev) =>
+                prev.map((event) =>
+                    event.id === editingEvent.id
+                        ? {
+                            ...event,
+                            title: newEvent.title,
+                            start: dayjs(`${newEvent.date} ${newEvent.startTime}`).format("YYYY-MM-DD HH:mm"),
+                            end: dayjs(`${newEvent.date} ${newEvent.endTime}`).format("YYYY-MM-DD HH:mm"),
+                        }
+                        : event
+                )
+            );
+        } else {
+            const response = await axios.post(
+                "http://localhost:5000/api/events",
+                {
+                    tripId: trip._id,
+                    title: newEvent.title,
+                    date: newEvent.date,
+                    startTime: newEvent.startTime,
+                    endTime: newEvent.endTime,
+                },
+                { headers: { Authorization: `Bearer ${authToken}` } }
+            );
+
+            setSelectedDates((prev) => [
+                ...prev,
+                {
+                    id: response.data.data._id,
+                    title: response.data.data.title,
+                    start: dayjs(`${response.data.data.date} ${response.data.data.startTime}`).format("YYYY-MM-DD HH:mm"),
+                    end: dayjs(`${response.data.data.date} ${response.data.data.endTime}`).format("YYYY-MM-DD HH:mm"),
+                },
+            ]);
         }
-      );
 
-      // Add the new event dynamically
-      const newEventFormatted = {
-        id: response.data.data._id,
-        title: response.data.data.title,
-        start: dayjs(`${response.data.data.date} ${response.data.data.startTime}`).format("YYYY-MM-DD HH:mm"),
-        end: dayjs(`${response.data.data.date} ${response.data.data.endTime}`).format("YYYY-MM-DD HH:mm"),
-      };
+        // Reset the form and clear error message
+        setShowCreateForm(false);
+        setIsEditing(false);
+        setEditingEvent(null);
+        setNewEvent({ title: "", date: "", startTime: "", endTime: "" });
+        setErrorMessage(""); // Clear error message
 
-      setSelectedDates((prev) => [...prev, newEventFormatted]); // Update state
-      setShowCreateForm(false);
-      setNewEvent({ title: "", date: "", startTime: "", endTime: "" });
     } catch (err) {
-      console.error("Error creating event:", err);
-      alert("Failed to create event. Please try again.");
+        console.error("Error handling event:", err);
+        setErrorMessage("Failed to process event. Please try again.");
     }
-  };
+};
+
+const handleDeleteEvent = async () => {
+    if (!editingEvent) return;
+
+    const confirmDelete = window.confirm("Are you sure you want to delete this event?");
+    if (!confirmDelete) return; // Exit if user cancels
+
+    const authToken = localStorage.getItem("authToken");
+
+    try {
+        await axios.delete(`http://localhost:5000/api/events/${editingEvent.id}`, {
+            headers: { Authorization: `Bearer ${authToken}` },
+        });
+
+        // Remove the deleted event from the state
+        setSelectedDates((prev) => prev.filter(event => event.id !== editingEvent.id));
+
+        // Reset form and close modal
+        setShowCreateForm(false);
+        setIsEditing(false);
+        setEditingEvent(null);
+        setNewEvent({ title: "", date: "", startTime: "", endTime: "" });
+
+        alert("Event deleted successfully!");
+    } catch (err) {
+        console.error("Error deleting event:", err);
+        setErrorMessage("Failed to delete the event. Please try again.");
+    }
+};
+
+
 
   if (error) {
     return <div className="error-message">{error}</div>;
@@ -200,67 +321,80 @@ const Trip = () => {
       </div>
 
       {showCreateForm && (
-        <div className="event-form-overlay">
-          <div className="event-form">
-            <h2>Create Event</h2>
-            <form onSubmit={handleCreateEvent}>
-              <label>
-                Event Title:
-                <input
-                  type="text"
-                  value={newEvent.title}
-                  onChange={(e) =>
-                    setNewEvent({ ...newEvent, title: e.target.value })
-                  }
-                  required
-                />
-              </label>
-              <label>
-                Date:
-                <input
-                    type="date"
-                    value={newEvent.date}
-                    min={trip.startDate ? dayjs(trip.startDate).format("YYYY-MM-DD") : ""}
-                    max={trip.endDate ? dayjs(trip.endDate).format("YYYY-MM-DD") : ""}
-                    onChange={(e) =>
-                    setNewEvent({ ...newEvent, date: e.target.value })
-                    }
-                    required
-                />
+    <div className="event-form-overlay">
+        <div className="event-form">
+            <h2>{isEditing ? "Edit Event" : "Create Event"}</h2>
+            <form onSubmit={handleSubmitEvent}>
+                <label>
+                    Event Title:
+                    <input
+                        type="text"
+                        value={newEvent.title}
+                        onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                        required
+                    />
                 </label>
-              <label>
-                Start Time:
-                <input
-                  type="time"
-                  value={newEvent.startTime}
-                  onChange={(e) =>
-                    setNewEvent({ ...newEvent, startTime: e.target.value })
-                  }
-                  required
-                />
-              </label>
-              <label>
-                End Time:
-                <input
-                  type="time"
-                  value={newEvent.endTime}
-                  onChange={(e) =>
-                    setNewEvent({ ...newEvent, endTime: e.target.value })
-                  }
-                  required
-                />
-              </label>
-              <button type="submit">Add Event</button>
-              <button
-                type="button"
-                onClick={() => setShowCreateForm(false)}
-              >
-                Cancel
-              </button>
+                <label>
+                    Date:
+                    <input
+                        type="date"
+                        value={newEvent.date}
+                        min={trip.startDate ? dayjs(trip.startDate).format("YYYY-MM-DD") : ""}
+                        max={trip.endDate ? dayjs(trip.endDate).format("YYYY-MM-DD") : ""}
+                        onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
+                        required
+                    />
+                </label>
+                <label>
+                    Start Time:
+                    <input
+                        type="time"
+                        value={newEvent.startTime}
+                        onChange={(e) => setNewEvent({ ...newEvent, startTime: e.target.value })}
+                        required
+                    />
+                </label>
+                <label>
+                    End Time:
+                    <input
+                        type="time"
+                        value={newEvent.endTime}
+                        onChange={(e) => setNewEvent({ ...newEvent, endTime: e.target.value })}
+                        required
+                    />
+                </label>
+
+                {errorMessage && <div className="error-message-box">{errorMessage}</div>}
+
+                <button type="submit">{isEditing ? "Update Event" : "Add Event"}</button>
+                <button
+                    type="button"
+                    className="cancel-button"
+                    onClick={() => {
+                        setShowCreateForm(false);
+                        setIsEditing(false);
+                        setEditingEvent(null);
+                        setNewEvent({ title: "", date: "", startTime: "", endTime: "" });
+                    }}
+                >
+                    Cancel
+                </button>
+
+                {/* 🗑️ Delete Button: Only Show When Editing an Event */}
+                {isEditing && (
+                    <button
+                        type="button"
+                        className="delete-button"
+                        onClick={handleDeleteEvent}
+                    >
+                        Delete Event
+                    </button>
+                )}
             </form>
-          </div>
         </div>
-      )}
+    </div>
+)}
+
     </div>
   );
 };
