@@ -33,4 +33,19 @@ router.put('/logout', protect, logoutUser);
 //Route to get all ID from emails in trip creation
 router.post("/get-ids-by-emails", getIdsByEmails);
 
+// Get user details by ID (protected route)
+router.get('/:id', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('name email');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.status(200).json(user);
+  } catch (error) {
+    console.error('Error retrieving user details:', error);
+    res.status(500).json({ message: 'Failed to retrieve user details' });
+  }
+});
+
+
 module.exports = router;

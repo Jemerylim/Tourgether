@@ -19,27 +19,39 @@ const Dashboard = () => {
         setLoading(false);
         return;
       }
-
+  
       try {
         // Fetch user profile to get userId
         const userResponse = await axios.get("http://localhost:5000/api/users/profile", {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
+          headers: { Authorization: `Bearer ${authToken}` },
         });
-        const userId = userResponse.data.user._id || userResponse.data.user.id;
+  
+        const userId = userResponse.data.user?._id || userResponse.data.user?.id;
 
+        if (!userId) {
+          console.error("Failed to retrieve user ID.");
+          setError("Error: Failed to retrieve user ID. Please log in again.");
+          localStorage.removeItem("authToken"); // Clear token if user ID is missing
+          navigate("/login");
+          setLoading(false);
+          return;
+        }
+  
+        console.log("Fetched userId:", userId);
+  
         // Fetch trips for the user
         const tripsResponse = await axios.get(`http://localhost:5000/api/trips/user/${userId}`, {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
+          headers: { Authorization: `Bearer ${authToken}` },
         });
-        setTrips(tripsResponse.data.data || []); // Safely access trips data
+  
+        setTrips(tripsResponse.data.data || []);
       } catch (err) {
         console.error("Error fetching trips:", err);
-        if (err.response?.status === 404) {
-          setTrips([]); // Handle case where no trips exist
+        if (err.response?.status === 401) {
+          localStorage.removeItem("authToken");
+          navigate("/login");
+        } else if (err.response?.status === 400) {
+          setError("Invalid user ID format.");
         } else {
           setError("Failed to fetch trips. Please try again later.");
         }
@@ -47,9 +59,9 @@ const Dashboard = () => {
         setLoading(false);
       }
     };
-
+  
     fetchUserTrips();
-  }, []);
+  }, []);  
 
   if (loading) {
     return <div className="loading-message">Loading your trips...</div>;

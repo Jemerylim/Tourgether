@@ -51,6 +51,10 @@ const MyTrips = () => {
     fetchUserTrips();
   }, []);
 
+  const handleCreateNewTrip = () => {
+    navigate("/create-trip");
+  };
+
   if (loading) {
     return <div className="loading-message">Loading your trips...</div>;
   }
@@ -63,6 +67,9 @@ const MyTrips = () => {
     <div className="my-trips-container">
       <Navbar />
       <h1 className="page-title">My Trips</h1>
+      <button onClick={handleCreateNewTrip} className="create-trip-button">
+        Create New Trip
+      </button>
       <div className="trips-grid">
         {trips.length > 0 ? (
           trips.map((trip) => (

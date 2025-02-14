@@ -98,7 +98,7 @@
     display: block;
     width: 100%;
     padding: 0.5rem 1rem; /* Tailwind px-4 py-2 equivalent */
-    color: white;
+    color: black;
     font-weight: 500; /* Tailwind font-medium equivalent */
     border-radius: 0.375rem; /* Tailwind rounded equivalent */
     text-align: center;
@@ -165,7 +165,7 @@
   .add-button {
     flex: 1; /* Make the button take up 1 part of the available space */
     padding: 0.5rem; /* Ensure consistent padding */
-    color: white;
+    color: black;
     font-weight: 500;
     border-radius: 0.375rem;
     text-align: center;
