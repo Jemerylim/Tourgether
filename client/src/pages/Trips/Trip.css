@@ -144,3 +144,98 @@
     color: white;
     border: 2px solid #e1444c;; /* Border color */
 }
+
+/* Manage members */
+
+.manage-members-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000; /* Ensure it’s above other elements */
+}
+
+.manage-members-modal {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    width: 400px;
+    max-height: 80vh;
+    overflow-y: auto; /* Scroll if content is too large */
+}
+
+.manage-members-modal h2 {
+    margin-bottom: 20px;
+}
+
+.members-list {
+    list-style: none;
+    padding: 0;
+}
+
+.member-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.remove-member-button {
+    background-color: #e1444c;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.remove-member-button:hover {
+    background-color: #c53840;
+}
+
+.close-button {
+    background-color: #0C7489;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 20px;
+    display: block;
+    text-align: center;
+}
+
+.add-member-section {
+    margin-top: 20px;
+  }
+  
+  .add-member-section h3 {
+    margin-bottom: 10px;
+  }
+  
+  .add-member-section input {
+    width: calc(100% - 130px);
+    padding: 10px;
+    margin-right: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+  
+  .invite-button {
+    padding: 10px 20px;
+    background-color: #0C7489;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .invite-button:hover {
+    background-color: #0A5A6E;
+  }
+  
