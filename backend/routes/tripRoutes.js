@@ -1,6 +1,9 @@
 const express = require('express');
 const {
+  acceptInvitation, 
   createTrip,
+  declineInvitation,
+  checkInvitationStatus,
   getTrip,
   getTrips,
   deleteTrip,
@@ -28,5 +31,14 @@ router.delete('/:id', protect, deleteTrip);
 
 // Get all trips for a specific user
 router.get('/user/:userId', getTripsByUser);
+
+// Accept invitation
+router.post('/:tripId/accept-invitation', protect, acceptInvitation);
+
+// Decline invitation
+router.delete('/:tripId/decline-invitation', protect, declineInvitation);
+
+// Check invitation status
+router.get('/:tripId/status', checkInvitationStatus);
 
 module.exports = router;

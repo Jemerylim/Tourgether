@@ -46,19 +46,21 @@ const Login = () => {
 
             console.log("Response:", response); // Log the entire response
             // Extract the token from the response
-            const { token } = response.data;
+            const { token, user } = response.data;
 
             // Store the token securely
             localStorage.setItem("authToken", token);
             localStorage.setItem("userEmail", email); 
 
             // Navigate to the dashboard or protected page
-            navigate("/dashboard");
+            // navigate("/dashboard");
+            // Redirect back to the invitation page if redirected here
+            const redirectUrl = new URLSearchParams(location.search).get("redirect");
+            navigate(redirectUrl || "/dashboard");
         } catch (error) {
-            // Handle errors and show an error message
             setError(error.response?.data?.message || "An error occurred. Please try again.");
         }
-    };
+     };
 
     return (
         <div className="login-container">

@@ -12,6 +12,12 @@ const tripSchema = new mongoose.Schema({
       ref: 'User',
     },
   ],
+  sentInvitations: [
+    {
+      userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      status: { type: String, enum: ['pending', 'accepted', 'declined'], default: 'pending' },
+    },
+  ],
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
