@@ -109,30 +109,24 @@ const [errorMessage, setErrorMessage] = useState("");
       }
 
       try {
-        // Fetch trip details
-        const tripResponse = await axios.get(
-          `http://localhost:5000/api/trips/${id}`,
-          {
+        // Use Promise.all to load both the trip and user profile at the same time
+        const [tripResponse, userResponse] = await Promise.all([
+          axios.get(`http://localhost:5000/api/trips/${id}`, {
             headers: { Authorization: `Bearer ${authToken}` },
-          }
-        );
+          }),
+          axios.get("http://localhost:5000/api/users/profile", {
+            headers: { Authorization: `Bearer ${authToken}` },
+          }),
+        ]);
+  
         const fetchedTrip = tripResponse.data.data;
         setTrip(fetchedTrip);
-
-        // Fetch user details
-        const userResponse = await axios.get(
-          "http://localhost:5000/api/users/profile",
-          {
-            headers: { Authorization: `Bearer ${authToken}` },
-          }
-        );
-        if (userResponse.data.user) {
-          setUserId(userResponse.data.user._id || userResponse.data.user.id);
-        } else {
-          setError(
-            "User information could not be retrieved. Please log in again."
-          );
+  
+        const fetchedUserId = userResponse.data.user?._id || userResponse.data.user?.id;
+        if (!fetchedUserId) {
+          throw new Error("User ID not found in profile response.");
         }
+        setUserId(fetchedUserId);
 
         // Set calendar restrictions based on trip dates
         const tripStartDate = dayjs(fetchedTrip.startDate).format("YYYY-MM-DD");

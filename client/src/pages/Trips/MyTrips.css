@@ -4,6 +4,22 @@
     align-items: center;
     padding: 20px;
   }
+
+  .create-trip-button {
+    background-color: #0C7489;
+    color: white;
+    padding: 10px 20px;
+    margin: 20px 0;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+  }
+  
+  .create-trip-button:hover {
+    background-color: #0D8F8F;
+  }
   
   .page-title {
     font-size: 32px;
