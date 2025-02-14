@@ -40,6 +40,10 @@ const MyTrips = () => {
         console.error("Error fetching trips:", err);
         if (err.response?.status === 404) {
           setTrips([]); // Handle case where no trips exist
+        } else if (err.response?.status === 401) {
+          console.log('Session expired or unauthorized. Redirecting to login.');
+          localStorage.removeItem('authToken');
+          navigate("/login");
         } else {
           setError("Failed to fetch trips. Please try again later.");
         }
