@@ -2,6 +2,7 @@ const nodemailer = require('nodemailer');
 const Trip = require('../models/Trip');
 const User = require('../models/User');
 const mongoose = require('mongoose');
+// const asyncHandler = require("express-async-handler");
 
 // For sending email
 const transporter = nodemailer.createTransport({
@@ -220,56 +221,71 @@ exports.checkInvitationStatus = async (req, res) => {
 };
 
 // Send invites to trip
-exports.sendInvites = async (req, res) => {
-  const { emails } = req.body;
+exports.sendInviteToMember = async (req, res) => {
   const { tripId } = req.params;
+  const { email } = req.body;
+
+  if (!email) return res.status(400).json({ message: 'Email is required.' });
 
   try {
     const trip = await Trip.findById(tripId);
-    if (!trip) {
-      return res.status(404).json({ message: 'Trip not found' });
+    if (!trip) return res.status(404).json({ message: 'Trip not found.' });
+
+    if (!trip.createdBy.equals(req.user._id)) {
+      return res.status(403).json({ message: 'Unauthorized to invite members.' });
     }
 
-    // Email sending logic (using nodemailer)
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL, // Ensure you have environment variables set for these
-        pass: process.env.EMAIL_PASSWORD,
-      },
-    });
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: 'User not found.' });
 
-    for (const email of emails) {
-      const mailOptions = {
-        from: process.env.EMAIL,
-        to: email,
-        subject: `You're invited to join ${trip.name}!`,
-        text: `Hello, you've been invited to join the trip "${trip.name}". Please log in to view the details.`,
-      };
-
-      await transporter.sendMail(mailOptions);
+    if (trip.members.includes(user._id)) {
+      return res.status(400).json({ message: 'User is already a member.' });
     }
 
-    res.status(200).json({ message: 'Invitations sent successfully' });
+    trip.sentInvitations.push({ userId: user._id, status: 'pending' });
+
+    const invitationLink = `http://localhost:5173/trip/${trip._id}/accept?userId=${user._id}`;
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: user.email,  // ✅ Corrected
+      subject: `Invitation to join the trip "${trip.name}"`,
+      html: `
+        <p>Hi ${user.name},</p>
+        <p>You have been invited to join the trip "<strong>${trip.name}</strong>".</p>
+        <p>Visit your dashboard to see more details or <a href="${invitationLink}">accept the invitation here</a>.</p>
+        <p>Regards,<br>The Tourgether Team</p>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    await trip.save();
+
+    res.status(200).json({ message: 'Invitation sent successfully.' });
   } catch (error) {
-    console.error('Error sending invites:', error);
-    res.status(500).json({ message: 'Server error. Please try again later.' });
+    console.error('Error sending invitation:', error);
+    res.status(500).json({ message: 'Failed to send invitation.' });
   }
 };
 
-// Remove member from trip
+// Delete member from trip
 exports.removeMember = async (req, res) => {
   const { tripId, memberId } = req.params;
 
   try {
     const trip = await Trip.findById(tripId);
-    if (!trip) return res.status(404).json({ message: "Trip not found." });
+    if (!trip) return res.status(404).json({ message: 'Trip not found.' });
 
-    trip.members = trip.members.filter((member) => member.toString() !== memberId);
+    if (!trip.createdBy.equals(req.user._id)) {
+      return res.status(403).json({ message: 'Unauthorized to remove members.' });
+    }
+
+    trip.members = trip.members.filter((member) => !member.equals(memberId));
+    trip.sentInvitations = trip.sentInvitations.filter((inv) => !inv.userId.equals(memberId));
+
     await trip.save();
-
-    res.status(200).json({ success: true, message: "Member removed." });
+    res.status(200).json({ message: 'Member removed successfully.' });
   } catch (error) {
-    res.status(500).json({ message: "Failed to remove member." });
+    console.error('Error removing member:', error);
+    res.status(500).json({ message: 'Failed to remove member.' });
   }
 };

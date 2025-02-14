@@ -58,8 +58,10 @@ const Trip = () => {
   const [userId, setUserId] = useState(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-const [editingEvent, setEditingEvent] = useState(null);
-const [errorMessage, setErrorMessage] = useState("");
+  const [editingEvent, setEditingEvent] = useState(null);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [members, setMembers] = useState([]);
+  const [showManageMembers, setShowManageMembers] = useState(false);
 
   const [newEvent, setNewEvent] = useState({
     title: "",
@@ -99,13 +101,13 @@ const [errorMessage, setErrorMessage] = useState("");
     }
   }, [selectedDates]);
 
-  // Fetch trip and event details
+  // Fetch trip, event details, and members
   useEffect(() => {
     const fetchTripDetails = async () => {
       const authToken = localStorage.getItem("authToken");
       if (!authToken) {
         setError("Authorization token is missing. Please log in again.");
-        return;
+        return navigate("/login");
       }
 
       try {
@@ -121,6 +123,15 @@ const [errorMessage, setErrorMessage] = useState("");
   
         const fetchedTrip = tripResponse.data.data;
         setTrip(fetchedTrip);
+        // Ensure the creator is always in the members list
+        const updatedMembers = [
+          fetchedTrip.createdBy, // Add the creator
+          ...fetchedTrip.members.filter(
+            (member) => member._id !== fetchedTrip.createdBy._id
+          ), // Avoid duplicates
+        ];
+        setMembers(updatedMembers);
+        setUserId(userResponse.data.user._id);
   
         const fetchedUserId = userResponse.data.user?._id || userResponse.data.user?.id;
         if (!fetchedUserId) {
@@ -169,7 +180,7 @@ const [errorMessage, setErrorMessage] = useState("");
     };
 
     fetchTripDetails();
-  }, [id]);
+  }, [id, navigate]);
 
   const handleSubmitEvent = async (e) => {
     e.preventDefault();
@@ -254,9 +265,8 @@ const [errorMessage, setErrorMessage] = useState("");
         console.error("Error handling event:", err);
         setErrorMessage("Failed to process event. Please try again.");
     }
-};
-
-const handleDeleteEvent = async () => {
+  };
+  const handleDeleteEvent = async () => {
     if (!editingEvent) return;
 
     const confirmDelete = window.confirm("Are you sure you want to delete this event?");
@@ -283,9 +293,35 @@ const handleDeleteEvent = async () => {
         console.error("Error deleting event:", err);
         setErrorMessage("Failed to delete the event. Please try again.");
     }
-};
+  };
 
+  const handleInviteMember = async (email) => {
+    const authToken = localStorage.getItem("authToken");
+    try {
+      await axios.post(
+        `http://localhost:5000/api/trips/${id}/invite`,
+        { email },
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
+      alert("Invitation sent successfully.");
+    } catch (error) {
+      console.error("Error inviting member:", error);
+    }
+  };
 
+  const handleRemoveMember = async (memberId) => {
+    const authToken = localStorage.getItem("authToken");
+    try {
+      await axios.delete(
+        `http://localhost:5000/api/trips/${id}/remove-member/${memberId}`,
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
+      setMembers((prev) => prev.filter((member) => member._id !== memberId));
+      alert("Member removed successfully.");
+    } catch (error) {
+      console.error("Error removing member:", error);
+    }
+  };
 
   if (error) {
     return <div className="error-message">{error}</div>;
@@ -309,13 +345,70 @@ const handleDeleteEvent = async () => {
         >
           Create Event
         </button>
+        <button
+            className="manage-members-button"
+            onClick={() => setShowManageMembers(true)}
+          >
+            Manage Members
+          </button>
       </div>
       <div className="calendar-section">
         <ScheduleXCalendar calendarApp={calendar} />
       </div>
 
+      {showManageMembers && (
+        <div className="manage-members-overlay">
+          <div className="manage-members-modal">
+            <h2>Manage Members</h2>
+            <p><strong>This trip was created by:</strong> {trip.createdBy.name}</p>
+            <ul className="members-list">
+              {members.map((member) => (
+                <li key={member._id} className="member-item">
+                  {member.name} ({member.email})
+                  {trip?.createdBy._id === userId && member._id !== trip.createdBy._id && (
+                    <button
+                      className="remove-member-button"
+                      onClick={() => handleRemoveMember(member._id)}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+
+            {/* Add Member Section */}
+            {trip?.createdBy._id === userId && (
+              <div className="add-member-section">
+                <h3>Add Member</h3>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const email = e.target.email.value;
+                    handleInviteMember(email);
+                    e.target.reset();
+                  }}
+                >
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="Enter member's email"
+                    required
+                  />
+                  <button type="submit" className="invite-button">Invite</button>
+                </form>
+              </div>
+            )}
+
+            <button className="close-button" onClick={() => setShowManageMembers(false)}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
       {showCreateForm && (
-    <div className="event-form-overlay">
+      <div className="event-form-overlay">
         <div className="event-form">
             <h2>{isEditing ? "Edit Event" : "Create Event"}</h2>
             <form onSubmit={handleSubmitEvent}>
@@ -386,7 +479,7 @@ const handleDeleteEvent = async () => {
                 )}
             </form>
         </div>
-    </div>
+      </div>
 )}
 
     </div>
