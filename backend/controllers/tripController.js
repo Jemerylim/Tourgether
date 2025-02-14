@@ -189,3 +189,58 @@ exports.getTripsByUser = async (req, res) => {
     });
   }
 };
+
+// Send invites to trip
+exports.sendInvites = async (req, res) => {
+  const { emails } = req.body;
+  const { tripId } = req.params;
+
+  try {
+    const trip = await Trip.findById(tripId);
+    if (!trip) {
+      return res.status(404).json({ message: 'Trip not found' });
+    }
+
+    // Email sending logic (using nodemailer)
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL, // Ensure you have environment variables set for these
+        pass: process.env.EMAIL_PASSWORD,
+      },
+    });
+
+    for (const email of emails) {
+      const mailOptions = {
+        from: process.env.EMAIL,
+        to: email,
+        subject: `You're invited to join ${trip.name}!`,
+        text: `Hello, you've been invited to join the trip "${trip.name}". Please log in to view the details.`,
+      };
+
+      await transporter.sendMail(mailOptions);
+    }
+
+    res.status(200).json({ message: 'Invitations sent successfully' });
+  } catch (error) {
+    console.error('Error sending invites:', error);
+    res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};
+
+// Remove member from trip
+exports.removeMember = async (req, res) => {
+  const { tripId, memberId } = req.params;
+
+  try {
+    const trip = await Trip.findById(tripId);
+    if (!trip) return res.status(404).json({ message: "Trip not found." });
+
+    trip.members = trip.members.filter((member) => member.toString() !== memberId);
+    await trip.save();
+
+    res.status(200).json({ success: true, message: "Member removed." });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to remove member." });
+  }
+};

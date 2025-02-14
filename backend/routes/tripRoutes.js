@@ -1,11 +1,16 @@
 const express = require('express');
 const {
+  acceptInvitation, 
   createTrip,
+  declineInvitation,
+  checkInvitationStatus,
   getTrip,
   getTrips,
   deleteTrip,
   updateTrip,
-  getTripsByUser
+  getTripsByUser,
+  sendInvites,
+  removeMember
 } = require('../controllers/tripController');
 const { protect } = require('../middlewares/authMiddleware');
 
@@ -28,5 +33,21 @@ router.delete('/:id', protect, deleteTrip);
 
 // Get all trips for a specific user
 router.get('/user/:userId', getTripsByUser);
+
+// Accept invitation
+router.post('/:tripId/accept-invitation', protect, acceptInvitation);
+
+// Decline invitation
+router.delete('/:tripId/decline-invitation', protect, declineInvitation);
+
+// Check invitation status
+router.get('/:tripId/status', checkInvitationStatus);
+
+// Send invite to trip
+router.post('/:tripId/send-invites', protect, sendInvites);
+
+// Remove member from trip
+router.delete('/:tripId/remove-member/:memberId', protect, removeMember);
+
 
 module.exports = router;
