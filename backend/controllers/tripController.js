@@ -143,15 +143,20 @@ exports.getTripsByUser = async (req, res) => {
     const trips = await Trip.find({
       $or: [
         { createdBy: userId },
+        { members: userId },
         { sentInvitations: { $elemMatch: { userId, status: 'accepted' } } }
       ],
-    }).populate('members', 'name email').populate('createdBy', 'name email');
+    })
+    .populate('members', 'name email')
+    .populate('createdBy', 'name email');
+
     res.status(200).json({ success: true, data: trips });
   } catch (error) {
     console.error('Error fetching user trips:', error);
     res.status(500).json({ success: false, message: 'Error fetching user trips', error: error.message });
   }
 };
+
 
 // Accept trip invitation
 exports.acceptInvitation = async (req, res) => {
