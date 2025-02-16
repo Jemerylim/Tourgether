@@ -283,6 +283,52 @@ const resetPassword = async (req, res) => {
   }
 };
 
+// Function to update user profile
+const updateProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // ✅ Ensure name and email are correctly assigned
+    if (req.body.name) {
+      user.name = req.body.name;
+    }
+
+    if (req.body.email) {
+      // ✅ Check if the new email already exists in the database
+      const existingUser = await User.findOne({ email: req.body.email });
+      if (existingUser && existingUser._id.toString() !== req.user.id) {
+        return res.status(400).json({ message: "Email is already in use" });
+      }
+      user.email = req.body.email;
+    }
+
+    // ✅ Ensure bio updates
+    if (req.body.bio) {
+      user.bio = req.body.bio;
+    }
+
+    // ✅ Ensure profile picture updates
+    if (req.file) {
+      user.profilePicture = req.file.path;
+    }
+
+    // ✅ Save the updated user details
+    await user.save();
+
+    res.status(200).json({
+      message: "Profile updated successfully",
+      user,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+
 
 module.exports = {
   registerUser,
@@ -293,5 +339,6 @@ module.exports = {
   checkEmail,
   getIdsByEmails,
   requestPasswordReset,
-  resetPassword
+  resetPassword,
+  updateProfile
 };

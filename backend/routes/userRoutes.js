@@ -8,11 +8,25 @@ const {
   checkEmail,
   getIdsByEmails,
   requestPasswordReset,
-  resetPassword
+  resetPassword,
+  updateProfile
 } = require('../controllers/userController');
 const { protect } = require('../middlewares/authMiddleware');
+const multer = require("multer");
 
 const router = express.Router();
+
+// Configure Multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/"); // Save files to `uploads/` folder
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "-" + file.originalname); // Rename file
+  },
+});
+
+const upload = multer({ storage });
 
 // Route for user registration
 router.post('/register', registerUser);
@@ -40,6 +54,9 @@ router.post("/forgot-password", requestPasswordReset);
 
 // Route to reset password (after clicking email link)
 router.post("/reset-password", resetPassword);
+
+// Route to update profile picture and bio (protected)
+router.put("/update-profile", protect, upload.single("profilePicture"), updateProfile);
 
 // Get user details by ID (protected route)
 router.get('/:id', protect, async (req, res) => {

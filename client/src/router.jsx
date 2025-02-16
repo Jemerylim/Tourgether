@@ -12,6 +12,7 @@ import Quiz from "./pages/Quiz/Quiz";
 import { Result } from "./pages/Quiz/Quiz";
 import AllEvents from "./pages/Trips/AllEvents";
 import ResetPassword from "./pages/ResetPassword/ResetPassword";
+import Profile from "./pages/Profile/Profile";
 
 const AppRoutes = () => (
     <Routes>
@@ -27,6 +28,7 @@ const AppRoutes = () => (
         <Route path="/trip/:tripId/accept" element={<AcceptInvitation />} />
         <Route path="/trip/:id/events" element={<AllEvents />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/profile" element={<Profile />} />
     </Routes>
 );
 

@@ -9,6 +9,12 @@ const eventRoutes = require('./routes/eventRoutes');
 
 const app = express();
 
+const path = require("path");
+
+// Serve static files (ensure images can be accessed)
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+
 // Middleware to parse incoming JSON requests
 app.use(express.json());
 
