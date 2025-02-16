@@ -10,6 +10,7 @@ import MyTrips from "./pages/Trips/MyTrips";
 import AcceptInvitation from "./pages/Trips/AcceptInvitation";
 import Quiz from "./pages/Quiz/Quiz";
 import { Result } from "./pages/Quiz/Quiz";
+import AllEvents from "./pages/Trips/AllEvents";
 
 const AppRoutes = () => (
     <Routes>
@@ -23,6 +24,7 @@ const AppRoutes = () => (
         <Route path="/quiz" element={<Quiz />} />
         <Route path="/result" element={<Result />} />
         <Route path="/trip/:tripId/accept" element={<AcceptInvitation />} />
+        <Route path="/trip/:id/events" element={<AllEvents />} />
     </Routes>
 );
 

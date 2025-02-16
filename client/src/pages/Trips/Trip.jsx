@@ -340,6 +340,13 @@ const Trip = () => {
         </button>
         <h1 className="trip-title">{trip.name}</h1>
         <button
+          className="view-all-events-button"
+          onClick={() => navigate(`/trip/${id}/events`)}
+        >
+          View All Events
+        </button>
+
+        <button
           className="create-event-button"
           onClick={() => setShowCreateForm(true)}
         >
