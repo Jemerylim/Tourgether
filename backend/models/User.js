@@ -19,7 +19,7 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: [true, 'Please add a password'],
-    minlength: 8
+    minlength: [8, "Password must be at least 8 characters long"]
   },
   profilePicture: {
     type: String,
@@ -32,6 +32,14 @@ const userSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  resetPasswordToken: { 
+    type: String, 
+    default: null  
+  },
+  resetPasswordExpires: { 
+    type: Date, 
+    default: null  
   }
 });
 

@@ -1,6 +1,8 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const crypto = require("crypto");
+const nodemailer = require("nodemailer");
 
 // Function to handle user registration
 const registerUser = async (req, res) => {
@@ -52,11 +54,12 @@ const loginUser = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Compare the provided password with the hashed password
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
+
+      // Compare password
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+          return res.status(401).json({ message: "Invalid credentials" });
+      }
 
     // Generate a JWT token for authentication
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
@@ -167,6 +170,120 @@ const getIdsByEmails = async (req, res) => {
 };
 
 
+// Function to handle password reset request
+const requestPasswordReset = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    // Check if the user exists
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "Email not found. Please enter a registered email." });
+    }
+
+    // Generate a unique reset token
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = await bcrypt.hash(resetToken, 10);
+
+    // Store only the hashed token in the database
+    user.resetPasswordToken = hashedToken;
+    user.resetPasswordExpires = Date.now() + 3600000; // Token valid for 1 hour
+    await user.save();
+
+    // Create password reset link
+    const resetURL = `http://localhost:5173/reset-password?token=${resetToken}&email=${email}`;
+
+    // Email transporter setup (Using Gmail SMTP)
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    // Email Options
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: user.email,
+      subject: "Password Reset Request",
+      html: `
+        <p>Hi ${user.name},</p>
+        <p>You have requested to reset your password.</p>
+        <p>Click the button below to reset your password:</p>
+        <a href="${resetURL}" 
+          style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: #fff; text-decoration: none; border-radius: 5px;">
+          Reset Password
+        </a>
+        <p>This link will expire in 1 hour.</p>
+        <p>If you didn't request this, please ignore this email.</p>
+        <p>Regards,<br>The Tourgether Team</p>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.json({ message: "A password reset link has been sent to your email." });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error, please try again later." });
+  }
+};
+
+// Function to handle password reset (AFTER clicking the reset link)
+const resetPassword = async (req, res) => {
+  const { email, token, newPassword } = req.body;
+
+  try {
+    if (!email || !token || !newPassword) {
+      return res.status(400).json({ message: "Missing required fields." });
+    }
+
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user || !user.resetPasswordToken) {
+      return res.status(400).json({ message: "Invalid email or token." });
+    }
+
+
+    // Compare provided token with stored hashed token
+    const isMatch = await bcrypt.compare(token, user.resetPasswordToken);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Token is invalid or has expired." });
+    }
+
+    if (user.resetPasswordExpires < Date.now()) {
+      return res.status(400).json({ message: "Token has expired. Please request a new one." });
+    }
+
+    // Assign new password (middleware will hash it before saving)
+    user.password = newPassword;
+
+    // Clear reset token
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+
+    await user.save();
+
+    // Fetch updated user data to confirm the update
+    const updatedUser = await User.findOne({ email });
+
+    res.status(200).json({ message: "Password successfully reset. You can now log in." });
+
+  } catch (error) {
+
+    // Handle validation errors
+    if (error.name === "ValidationError") {
+        const messages = Object.values(error.errors).map((err) => err.message);
+        return res.status(400).json({ message: "Validation failed", errors: messages });
+    }
+
+    // Handle other errors
+    res.status(500).json({ message: "Server error. Try again later." });
+  }
+};
+
+
 module.exports = {
   registerUser,
   loginUser,
@@ -174,5 +291,7 @@ module.exports = {
   updateUser,
   logoutUser,
   checkEmail,
-  getIdsByEmails
+  getIdsByEmails,
+  requestPasswordReset,
+  resetPassword
 };

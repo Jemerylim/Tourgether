@@ -11,6 +11,7 @@ import AcceptInvitation from "./pages/Trips/AcceptInvitation";
 import Quiz from "./pages/Quiz/Quiz";
 import { Result } from "./pages/Quiz/Quiz";
 import AllEvents from "./pages/Trips/AllEvents";
+import ResetPassword from "./pages/ResetPassword/ResetPassword";
 
 const AppRoutes = () => (
     <Routes>
@@ -25,6 +26,7 @@ const AppRoutes = () => (
         <Route path="/result" element={<Result />} />
         <Route path="/trip/:tripId/accept" element={<AcceptInvitation />} />
         <Route path="/trip/:id/events" element={<AllEvents />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
     </Routes>
 );
 

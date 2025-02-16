@@ -5,8 +5,10 @@ const {
   getUserDetails,
   updateUser,
   logoutUser,
-  checkEmail, 
-  getIdsByEmails
+  checkEmail,
+  getIdsByEmails,
+  requestPasswordReset,
+  resetPassword
 } = require('../controllers/userController');
 const { protect } = require('../middlewares/authMiddleware');
 
@@ -32,6 +34,12 @@ router.put('/logout', protect, logoutUser);
 
 //Route to get all ID from emails in trip creation
 router.post("/get-ids-by-emails", getIdsByEmails);
+
+// Route to request a password reset link
+router.post("/forgot-password", requestPasswordReset);
+
+// Route to reset password (after clicking email link)
+router.post("/reset-password", resetPassword);
 
 // Get user details by ID (protected route)
 router.get('/:id', protect, async (req, res) => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, Link, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios"; // Axios for API requests
 import loginImage from "../../assets/Login.png";
 import Navbar from "../../components/Navbar/Navbar";
@@ -9,12 +9,24 @@ const Login = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // State for email, password, error messages, and success messages
+    // State for login form
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
     const [isImageLoaded, setIsImageLoaded] = useState(false);
+
+    // State for Forgot Password Modal
+    const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+    const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+    const [resetSuccessMessage, setResetSuccessMessage] = useState("");
+    const [resetErrorMessage, setResetErrorMessage] = useState("");
+
+    useEffect(() => {
+        if (location.state && location.state.message) {
+            setSuccessMessage(location.state.message);
+        }
+    }, [location.state]);
 
     const preloadImage = (src) => {
         const img = new Image();
@@ -22,45 +34,48 @@ const Login = () => {
         img.onload = () => setIsImageLoaded(true); 
     };
 
-    // Check if there's a success message in the state
-    useEffect(() => {
-        if (location.state && location.state.message) {
-            setSuccessMessage(location.state.message);
-        }
-    }, [location.state]);
-
     useEffect(() => {
         preloadImage(loginImage);
     }, []);
 
-    // Handle form submission
+    // Handle Login
     const handleLogin = async (e) => {
-        e.preventDefault(); // Prevent default form submission behavior
+        e.preventDefault();
 
         try {
-            // Send login request to the backend
             const response = await axios.post("http://localhost:5000/api/users/login", {
                 email,
                 password,
             });
 
-            console.log("Response:", response); // Log the entire response
-            // Extract the token from the response
-            const { token, user } = response.data;
-
-            // Store the token securely
+            const { token } = response.data;
             localStorage.setItem("authToken", token);
-            localStorage.setItem("userEmail", email); 
+            localStorage.setItem("userEmail", email);
 
-            // Navigate to the dashboard or protected page
-            // navigate("/dashboard");
-            // Redirect back to the invitation page if redirected here
             const redirectUrl = new URLSearchParams(location.search).get("redirect");
             navigate(redirectUrl || "/dashboard");
         } catch (error) {
             setError(error.response?.data?.message || "An error occurred. Please try again.");
         }
-     };
+    };
+
+    // Handle Forgot Password Request
+    const handleForgotPassword = async (e) => {
+        e.preventDefault();
+        setResetSuccessMessage("");
+        setResetErrorMessage("");
+
+        try {
+            const response = await axios.post("http://localhost:5000/api/users/forgot-password", {
+                email: forgotPasswordEmail,
+            });
+
+            setResetSuccessMessage(response.data.message || "A password reset link has been sent to your email.");
+            setForgotPasswordEmail("");
+        } catch (error) {
+            setResetErrorMessage(error.response?.data?.message || "Failed to send reset link. Try again.");
+        }
+    };
 
     return (
         <div className="login-container">
@@ -73,11 +88,7 @@ const Login = () => {
                 <p className="login-description">Please fill in the fields to access your account.</p>
 
                 {/* Display success message */}
-                {successMessage && (
-                    <div className="success-message">
-                        <p>{successMessage}</p>
-                    </div>
-                )}
+                {successMessage && <div className="success-message"><p>{successMessage}</p></div>}
 
                 <form className="login-form" onSubmit={handleLogin}>
                     <div className="input-group">
@@ -87,7 +98,7 @@ const Login = () => {
                             placeholder="Email"
                             className="login-input"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)} // Update state
+                            onChange={(e) => setEmail(e.target.value)}
                         />
                     </div>
                     <div className="input-group">
@@ -97,16 +108,19 @@ const Login = () => {
                             placeholder="Password"
                             className="login-input"
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)} // Update state
+                            onChange={(e) => setPassword(e.target.value)}
                         />
                     </div>
                     <button type="submit" className="login-button">Sign In</button>
-                    {/* Display error message */}
                     {error && <p className="error-message">{error}</p>}
                 </form>
+
                 <div className="forgot-password">
-                    <a href="#">Forgot Password?</a>
+                    <button className="forgot-password-link" onClick={() => setShowForgotPasswordModal(true)}>
+                        Forgot Password?
+                    </button>
                 </div>
+
                 <p className="register-text">
                     Don't have an account?{" "}
                     <button className="register-link" onClick={() => navigate("/register")}>
@@ -115,15 +129,42 @@ const Login = () => {
                 </p>
             </div>
 
-            {/* Right Section: Image Placeholder */}
+            {/* Right Section: Image */}
             <div className="image-placeholder-container">
-                {/* Show a loader or placeholder until the image is loaded */}
                 {isImageLoaded ? (
                     <img src={loginImage} alt="side image" className="side-image" />
                 ) : (
                     <div className="image-placeholder">Loading...</div>
                 )}
             </div>
+
+            {/* Forgot Password Modal */}
+            {showForgotPasswordModal && (
+                <div className="modal-overlay">
+                    <div className="modal">
+                        <h2>Reset Password</h2>
+                        <p>Enter your email to receive a password reset link.</p>
+
+                        <form onSubmit={handleForgotPassword}>
+                            <input
+                                type="email"
+                                placeholder="Email"
+                                className="modal-input"
+                                value={forgotPasswordEmail}
+                                onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                                required
+                            />
+                            <button type="submit" className="modal-button">Send Reset Link</button>
+                        </form>
+
+                        {resetSuccessMessage && <p className="success-message">{resetSuccessMessage}</p>}
+                        {resetErrorMessage && <p className="error-message">{resetErrorMessage}</p>}
+
+                        <button className="close-modal" onClick={() => setShowForgotPasswordModal(false)}>Close</button>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 };
