@@ -28,6 +28,10 @@ const eventSchema = new mongoose.Schema({
     type: String,
     required: [true, "Please add an end time for the event"], // Format: HH:mm
   },
+  notes: {
+    type: String,
+    default: "",
+  },
   createdAt: {
     type: Date,
     default: Date.now,

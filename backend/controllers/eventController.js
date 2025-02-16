@@ -3,13 +3,14 @@ const Trip = require('../models/Trip');
 
 // Create a new event
 exports.createEvent = async (req, res) => {
-  const { tripId, title, date, startTime, endTime } = req.body;
+  const { tripId, title, date, startTime, endTime, notes: incomingNotes = "",} = req.body;
 
   console.log("tripId:", tripId);
   console.log("title:", title);
   console.log("date:", date);
   console.log("startTime:", startTime);
   console.log("endTime:", endTime);
+  console.log("notes:", incomingNotes);
 
   if (!tripId || !title || !date || !startTime || !endTime) {
     return res.status(400).json({
@@ -44,6 +45,7 @@ exports.createEvent = async (req, res) => {
       startTime,
       endTime,
       description: req.body.description || "",
+      notes: incomingNotes,
     });
 
     res.status(201).json({ success: true, data: event });
@@ -109,12 +111,12 @@ exports.getEvent = async (req, res) => {
 // Update an event
 exports.updateEvent = async (req, res) => {
   const { id } = req.params;
-  const { title, description, date, startTime, endTime } = req.body;
+  const { title, description, date, startTime, endTime, notes } = req.body;
 
   try {
     const event = await Event.findByIdAndUpdate(
       id,
-      { title, description, date, startTime, endTime },
+      { title, description, date, startTime, endTime, notes },
       { new: true, runValidators: true }
     );
 
