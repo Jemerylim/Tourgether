@@ -44,7 +44,7 @@ exports.createTrip = async (req, res) => {
     });
 
     const emailPromises = validMembers.map((member) => {
-      const invitationLink = `http://localhost:5173/trip/${trip._id}/accept?userId=${member._id}`;
+      const invitationLink = `http://44.211.206.111:5173/trip/${trip._id}/accept?userId=${member._id}`;
       const mailOptions = {
         from: process.env.EMAIL_USER,
         to: member.email,
@@ -249,7 +249,7 @@ exports.sendInviteToMember = async (req, res) => {
 
     trip.sentInvitations.push({ userId: user._id, status: 'pending' });
 
-    const invitationLink = `http://localhost:5173/trip/${trip._id}/accept?userId=${user._id}`;
+    const invitationLink = `http://44.211.206.111:5173/trip/${trip._id}/accept?userId=${user._id}`;
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: user.email,  // ✅ Corrected

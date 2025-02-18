@@ -17,7 +17,7 @@ const CreateTrip = () => {
   // Function to validate email using the API
   const validateEmail = async (email) => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/users/check-email`, {
+      const response = await axios.get(`http://44.211.206.111:5000/api/users/check-email`, {
         params: { email },
       });
       return response.data.registered; // Assuming the API returns { registered: true/false }
@@ -110,7 +110,7 @@ const CreateTrip = () => {
     try {
       // Map emails to user IDs
       const response = await axios.post(
-        "http://localhost:5000/api/users/get-ids-by-emails",
+        "http://44.211.206.111:5000/api/users/get-ids-by-emails",
         {
           emails: groupEmails,
         },
@@ -133,7 +133,7 @@ const CreateTrip = () => {
   
       // Call to create trip
       const tripResponse = await axios.post(
-        `http://localhost:5000/api/trips/create-trip`,
+        `http://44.211.206.111:5000/api/trips/create-trip`,
         tripDetails,
         {
           headers: {

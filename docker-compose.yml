@@ -12,10 +12,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=${PORT}
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=${DATABASE_URL}    # MongoDB Atlas URL from .env
       - JWT_SECRET=${JWT_SECRET}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASS=${EMAIL_PASS}
     depends_on:
-      - mongodb
+      - frontend
+    restart: always
 
   frontend:
     build:
@@ -29,14 +32,9 @@ services:
       - /usr/src/app/node_modules
     environment:
       - NODE_ENV=${NODE_ENV}
+      - VITE_API_URL=${VITE_API_URL}    # Frontend uses backend API URL
+    restart: always
 
-  mongodb:
-    image: mongo:latest
-    container_name: mongodb
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb-data:/data/db
-
-volumes:
-  mongodb-data:
+networks:
+  default:
+    driver: bridge

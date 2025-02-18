@@ -191,7 +191,7 @@ const requestPasswordReset = async (req, res) => {
     await user.save();
 
     // Create password reset link
-    const resetURL = `http://localhost:5173/reset-password?token=${resetToken}&email=${email}`;
+    const resetURL = `http://44.211.206.111:5173/reset-password?token=${resetToken}&email=${email}`;
 
     // Email transporter setup (Using Gmail SMTP)
     const transporter = nodemailer.createTransport({

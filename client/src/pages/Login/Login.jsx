@@ -43,7 +43,7 @@ const Login = () => {
         e.preventDefault();
 
         try {
-            const response = await axios.post("http://localhost:5000/api/users/login", {
+            const response = await axios.post("http://44.211.206.111:5000/api/users/login", {
                 email,
                 password,
             });
@@ -66,7 +66,7 @@ const Login = () => {
         setResetErrorMessage("");
 
         try {
-            const response = await axios.post("http://localhost:5000/api/users/forgot-password", {
+            const response = await axios.post("http://44.211.206.111:5000/api/users/forgot-password", {
                 email: forgotPasswordEmail,
             });
 
