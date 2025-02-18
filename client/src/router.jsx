@@ -4,7 +4,7 @@ import Home from "./pages/Home/Home";
 import Login from "./pages/Login/Login";
 import Register from "./pages/Register/Register";
 import CreateTrip from "./pages/Trips/NewTripForm"
-import TripDetails from "./pages/Trips/trip"
+import TripDetails from "./pages/Trips/Trip"
 import Dashboard from "./pages/Dashboard/Dashboard";
 import MyTrips from "./pages/Trips/MyTrips";
 import AcceptInvitation from "./pages/Trips/AcceptInvitation";
