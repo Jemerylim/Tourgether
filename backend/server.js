@@ -21,6 +21,7 @@ app.use(express.json());
 const allowedOrigins = [
   'http://52.44.156.98:5173', // Vite frontend during development
   'http://52.44.156.98:3000', // Your production frontend URL
+  'http://52.44.156.98:5000',
 ];
 
 // CORS configuration
