@@ -1,29 +1,27 @@
-# Use Node.js as base image
+# Use Node.js to build the Vite frontend
 FROM node:18-alpine as build
-
-# Set working directory
 WORKDIR /app
-
-# Copy package.json and package-lock.json
 COPY package*.json ./
-
-# Install dependencies
-RUN npm install
-
-# Copy the rest of the application files
+RUN npm install --force
 COPY . .
-
-# Build the Vite project
 RUN npm run build
 
-# Use Nginx for serving the frontend
+# Use Nginx to serve the frontend
 FROM nginx:alpine
+WORKDIR /usr/share/nginx/html
 
-# Copy built frontend files to Nginx html directory
-COPY --from=build /app/dist /usr/share/nginx/html
+# Remove default Nginx config
+RUN rm /etc/nginx/conf.d/default.conf
 
-# Expose the default HTTP port
+# Copy built frontend files to Nginx
+COPY --from=build /app/dist . 
+
+# Copy custom Nginx configuration into the correct folder
+COPY nginx/default.conf /etc/nginx/conf.d/default.conf
+
+# Expose the port
 EXPOSE 80
 
 # Start Nginx
 CMD ["nginx", "-g", "daemon off;"]
+
