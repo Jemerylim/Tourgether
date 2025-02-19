@@ -18,22 +18,11 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // Middleware to parse incoming JSON requests
 app.use(express.json());
 
-const allowedOrigins = [
-  'http://52.44.156.98:5173', // Vite frontend during development
-  'http://52.44.156.98:3000', // Your production frontend URL
-  'http://52.44.156.98:5000',
-];
-
-// CORS configuration
+// Allow requests from your frontend
 app.use(cors({
-  origin: function (origin, callback) {
-    if (allowedOrigins.includes(origin) || !origin) {
-      callback(null, true); // Allow the origin
-    } else {
-      callback(new Error('Not allowed by CORS')); // Block the origin
-    }
-  },
-  credentials: true, // If using cookies or credentials
+  origin: "http://52.44.156.98", // Change this to match your frontend URL
+  methods: "GET,POST,PUT,DELETE",
+  credentials: true
 }));
 
 // Middleware to log request details
