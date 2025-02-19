@@ -27,7 +27,7 @@ const AcceptInvitation = () => {
         
         // Fetch invitation status
         const statusResponse = await axios.get(
-          `http://44.211.206.111:5000/api/trips/${tripId}/status?userId=${userId}`,
+          `http://52.44.156.98:5000/api/trips/${tripId}/status?userId=${userId}`,
           { headers: { Authorization: `Bearer ${authToken}` } }
         );
         console.log('Invitation status:', statusResponse.data.status);
@@ -35,7 +35,7 @@ const AcceptInvitation = () => {
   
         // Fetch current user profile
         const profileResponse = await axios.get(
-          `http://44.211.206.111:5000/api/users/profile`,
+          `http://52.44.156.98:5000/api/users/profile`,
           { headers: { Authorization: `Bearer ${authToken}` } }
         );
         const currentUserId = profileResponse.data.user._id;
@@ -73,7 +73,7 @@ const AcceptInvitation = () => {
     try {
       console.log('Accepting invitation...');
       await axios.post(
-        `http://44.211.206.111:5000/api/trips/${tripId}/accept-invitation`,
+        `http://52.44.156.98:5000/api/trips/${tripId}/accept-invitation`,
         { userId },
         { headers: { Authorization: `Bearer ${authToken}` } }
       );
@@ -91,7 +91,7 @@ const AcceptInvitation = () => {
     try {
       console.log('Declining invitation...');
       await axios.delete(
-        `http://44.211.206.111:5000/api/trips/${tripId}/decline-invitation`,
+        `http://52.44.156.98:5000/api/trips/${tripId}/decline-invitation`,
         {
           headers: { Authorization: `Bearer ${authToken}` },
           data: { userId }, // Pass userId in the request body

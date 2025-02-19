@@ -26,7 +26,7 @@ const AllEvents = () => {
       try {
         // Fetch trip details
         const tripResponse = await axios.get(
-          `http://44.211.206.111:5000/api/trips/${id}`,
+          `http://52.44.156.98:5000/api/trips/${id}`,
           {
             headers: { Authorization: `Bearer ${authToken}` },
           }
@@ -35,7 +35,7 @@ const AllEvents = () => {
 
         // Fetch events associated with the trip
         const eventsResponse = await axios.get(
-          `http://44.211.206.111:5000/api/events/trip/${id}`,
+          `http://52.44.156.98:5000/api/events/trip/${id}`,
           {
             headers: { Authorization: `Bearer ${authToken}` },
           }
@@ -92,7 +92,7 @@ const AllEvents = () => {
     const authToken = localStorage.getItem("authToken");
     try {
       await axios.put(
-        `http://44.211.206.111:5000/api/events/${eventId}`,
+        `http://52.44.156.98:5000/api/events/${eventId}`,
         { notes: notesState[eventId] || "" },
         { headers: { Authorization: `Bearer ${authToken}` } }
       );

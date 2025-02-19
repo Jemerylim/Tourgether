@@ -113,10 +113,10 @@ const Trip = () => {
       try {
         // Use Promise.all to load both the trip and user profile at the same time
         const [tripResponse, userResponse] = await Promise.all([
-          axios.get(`http://44.211.206.111:5000/api/trips/${id}`, {
+          axios.get(`http://52.44.156.98:5000/api/trips/${id}`, {
             headers: { Authorization: `Bearer ${authToken}` },
           }),
-          axios.get("http://44.211.206.111:5000/api/users/profile", {
+          axios.get("http://52.44.156.98:5000/api/users/profile", {
             headers: { Authorization: `Bearer ${authToken}` },
           }),
         ]);
@@ -154,7 +154,7 @@ const Trip = () => {
 
         // Fetch events associated with the trip
         const eventsResponse = await axios.get(
-          `http://44.211.206.111:5000/api/events/trip/${id}`,
+          `http://52.44.156.98:5000/api/events/trip/${id}`,
           {
             headers: { Authorization: `Bearer ${authToken}` },
           }
@@ -208,7 +208,7 @@ const Trip = () => {
     try {
         if (isEditing && editingEvent) {
             await axios.put(
-                `http://44.211.206.111:5000/api/events/${editingEvent.id}`,
+                `http://52.44.156.98:5000/api/events/${editingEvent.id}`,
                 {
                     title: newEvent.title,
                     date: newEvent.date,
@@ -232,7 +232,7 @@ const Trip = () => {
             );
         } else {
             const response = await axios.post(
-                "http://44.211.206.111:5000/api/events",
+                "http://52.44.156.98:5000/api/events",
                 {
                     tripId: trip._id,
                     title: newEvent.title,
@@ -275,7 +275,7 @@ const Trip = () => {
     const authToken = localStorage.getItem("authToken");
 
     try {
-        await axios.delete(`http://44.211.206.111:5000/api/events/${editingEvent.id}`, {
+        await axios.delete(`http://52.44.156.98:5000/api/events/${editingEvent.id}`, {
             headers: { Authorization: `Bearer ${authToken}` },
         });
 
@@ -299,7 +299,7 @@ const Trip = () => {
     const authToken = localStorage.getItem("authToken");
     try {
       await axios.post(
-        `http://44.211.206.111:5000/api/trips/${id}/invite`,
+        `http://52.44.156.98:5000/api/trips/${id}/invite`,
         { email },
         { headers: { Authorization: `Bearer ${authToken}` } }
       );
@@ -313,7 +313,7 @@ const Trip = () => {
     const authToken = localStorage.getItem("authToken");
     try {
       await axios.delete(
-        `http://44.211.206.111:5000/api/trips/${id}/remove-member/${memberId}`,
+        `http://52.44.156.98:5000/api/trips/${id}/remove-member/${memberId}`,
         { headers: { Authorization: `Bearer ${authToken}` } }
       );
       setMembers((prev) => prev.filter((member) => member._id !== memberId));

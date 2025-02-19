@@ -1,40 +1,32 @@
 services:
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: backend
+    build: ./backend
+    container_name: backend-container
+    restart: always
     ports:
       - "5000:5000"
-    volumes:
-      - ./backend:/usr/src/app
-      - /usr/src/app/node_modules
     environment:
-      - NODE_ENV=${NODE_ENV}
-      - PORT=${PORT}
-      - DATABASE_URL=${DATABASE_URL}    # MongoDB Atlas URL from .env
+      - NODE_ENV=production
+      - PORT=5000
+      - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
       - EMAIL_USER=${EMAIL_USER}
       - EMAIL_PASS=${EMAIL_PASS}
-    depends_on:
-      - frontend
-    restart: always
+    networks:
+      - app-network
+
 
   frontend:
-    build:
-      context: ./client
-      dockerfile: Dockerfile
-    container_name: frontend
-    ports:
-      - "3000:80"
-    volumes:
-      - ./client:/usr/src/app
-      - /usr/src/app/node_modules
-    environment:
-      - NODE_ENV=${NODE_ENV}
-      - VITE_API_URL=${VITE_API_URL}    # Frontend uses backend API URL
+    build: ./client
+    container_name: client-container
     restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
 
 networks:
-  default:
+  app-network:
     driver: bridge

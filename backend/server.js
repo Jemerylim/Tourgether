@@ -19,8 +19,8 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(express.json());
 
 const allowedOrigins = [
-  'http://44.211.206.111:5173', // Vite frontend during development
-  'http://44.211.206.111:3000', // Your production frontend URL
+  'http://52.44.156.98:5173', // Vite frontend during development
+  'http://52.44.156.98:3000', // Your production frontend URL
 ];
 
 // CORS configuration

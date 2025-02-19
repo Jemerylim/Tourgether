@@ -22,7 +22,7 @@ const Dashboard = () => {
   
       try {
         // Fetch user profile to get userId
-        const userResponse = await axios.get("http://44.211.206.111:5000/api/users/profile", {
+        const userResponse = await axios.get("http://52.44.156.98:5000/api/users/profile", {
           headers: { Authorization: `Bearer ${authToken}` },
         });
   
@@ -40,7 +40,7 @@ const Dashboard = () => {
         console.log("Fetched userId:", userId);
   
         // Fetch trips for the user
-        const tripsResponse = await axios.get(`http://44.211.206.111:5000/api/trips/user/${userId}`, {
+        const tripsResponse = await axios.get(`http://52.44.156.98:5000/api/trips/user/${userId}`, {
           headers: { Authorization: `Bearer ${authToken}` },
         });
   

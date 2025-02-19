@@ -18,7 +18,7 @@ const Profile = () => {
     const fetchUserProfile = async () => {
       try {
         const token = localStorage.getItem("authToken");
-        const response = await axios.get("http://44.211.206.111:5000/api/users/profile", {
+        const response = await axios.get("http://52.44.156.98:5000/api/users/profile", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -51,7 +51,7 @@ const Profile = () => {
     }
 
     try {
-      await axios.put("http://44.211.206.111:5000/api/users/update-profile", formData, {
+      await axios.put("http://52.44.156.98:5000/api/users/update-profile", formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
@@ -59,7 +59,7 @@ const Profile = () => {
       });
 
       // Fetch updated data from server after update
-      const updatedUserResponse = await axios.get("http://44.211.206.111:5000/api/users/profile", {
+      const updatedUserResponse = await axios.get("http://52.44.156.98:5000/api/users/profile", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -80,7 +80,7 @@ const Profile = () => {
       {user && (
         <div className="profile-box">
           <img
-            src={user?.profilePicture ? `http://44.211.206.111:5000/${user.profilePicture}` : "http://44.211.206.111:5000/uploads/profile-pic.jpg"}
+            src={user?.profilePicture ? `http://52.44.156.98:5000/${user.profilePicture}` : "http://52.44.156.98:5000/uploads/profile-pic.jpg"}
             alt="Profile"
             className="profile-img"
           />
