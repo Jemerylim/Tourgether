@@ -17,11 +17,11 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // Middleware to parse incoming JSON requests
 app.use(express.json());
 
-// Allow frontend access via CORS
+// Allow all frontend access via CORS
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://52.44.156.98",
+  origin: true, // Allows all origins dynamically
   methods: "GET,POST,PUT,DELETE",
-  credentials: true
+  credentials: true // If using cookies or credentials
 }));
 
 // Middleware to log request details for debugging
@@ -32,6 +32,7 @@ app.use((req, res, next) => {
   }
   next();
 });
+
 
 // **🚀 Load Secrets from AWS Secrets Manager (For Production)**
 const secretsManager = new AWS.SecretsManager({ region: "us-east-1" });
