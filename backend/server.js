@@ -17,7 +17,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // Middleware to parse incoming JSON requests
 app.use(express.json());
 
-/* // Allow all frontend access via CORS
+// Allow all frontend access via CORS
 app.use(cors({
   origin: true, // Allows all origins dynamically
   methods: "GET,POST,PUT,DELETE",
@@ -31,9 +31,9 @@ app.use((req, res, next) => {
     console.log('Request Body:', req.body);
   }
   next();
-}); */
+});
 
-const allowedOrigins = [
+/* const allowedOrigins = [
   "http://WebServerELB-2109245856.us-east-1.elb.amazonaws.com",
   "https://WebServerELB-2109245856.us-east-1.elb.amazonaws.com"
 ];
@@ -46,7 +46,7 @@ app.use(cors({
       callback(new Error("Not allowed by CORS"));
   },
   credentials: true
-}));
+})); */
 
 
 
