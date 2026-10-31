@@ -16,17 +16,6 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Legacy rules kept for pages that have not been restyled yet.
-   Tailwind utilities (class selectors) outrank these element selectors. */
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
 body {
   margin: 0;
   min-width: 320px;
@@ -36,58 +25,29 @@ body {
   box-sizing: border-box;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+#root {
+  width: 100%;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #0c7489;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-
-.error-message {
-  margin-top: 1rem;
-  color: red;
-  font-size: 0.9rem;
-}
-
-.success-message {
-  margin-bottom: 1rem;
-  color: green;
-  font-size: 1rem;
-  font-weight: bold;
-  text-align: center;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #082f37;
-    background-color: #fffdf7;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-}
-
+/* Trip calendar (Schedule-X): fluid size, themed through its own colour variables. */
 .sx-react-calendar-wrapper {
-  width: 1200px;
-  max-width: 100vw;
-  height: 600px;
-  max-height: 90vh;
+  width: 100%;
+  max-width: 100%;
+  height: min(70vh, 720px);
+  --sx-color-primary: #0f4c57;
+  --sx-color-on-primary: #ffffff;
+  --sx-color-primary-container: #ddf1ef;
+  --sx-color-background: #ffffff;
+  --sx-color-surface-container-low: #ffffff;
+  --sx-color-surface-container: #f2f8f7;
+  --sx-color-surface-dim: #f2f8f7;
+  --sx-color-surface-container-high: #ddf1ef;
+  --sx-color-on-background: #082f37;
+  --sx-internal-color-text: #082f37;
+  --sx-color-outline: rgba(15, 76, 87, 0.1);
+  --sx-color-outline-variant: rgba(15, 76, 87, 0.08);
+  --sx-rounding-small: 12px;
+  font-family: "Figtree", system-ui, sans-serif;
 }
 
 @layer components {
@@ -150,7 +110,8 @@ button:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-flip {
+  .animate-flip,
+  .animate-toast-in {
     animation: none;
   }
 }

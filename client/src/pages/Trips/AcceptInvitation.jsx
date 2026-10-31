@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import './AcceptInvitation.css';
+import Navbar from '../../components/Navbar/Navbar';
+import Scene from '../../components/Scene/Scene';
+import Ticket from '../../components/Ticket/Ticket';
+import { LoadingState } from '../../components/PageState/PageState';
 import { API_URL } from "../../config";
+import { apiErrorMessage } from '../../lib/apiError';
 
 const AcceptInvitation = () => {
   const { tripId } = useParams();
@@ -59,7 +63,7 @@ const AcceptInvitation = () => {
           navigate(`/login?redirect=/trip/${tripId}/accept?userId=${userId}`);
         } else {
           console.error('Error fetching invitation status or profile:', error);
-          setError('Failed to check invitation status. Please try again later.');
+          setError(apiErrorMessage(error, "Couldn't check this invitation"));
         }
       } finally {
         setLoading(false);
@@ -79,11 +83,9 @@ const AcceptInvitation = () => {
         { headers: { Authorization: `Bearer ${authToken}` } }
       );
       setInvitationStatus('accepted');
-      alert('You have successfully joined the trip!');
-      navigate('/dashboard');
     } catch (error) {
       console.error('Error accepting invitation:', error);
-      setError('Failed to accept invitation. Please try again later.');
+      setError(apiErrorMessage(error, "Couldn't accept the invitation"));
     }
   };
 
@@ -99,40 +101,88 @@ const AcceptInvitation = () => {
         }
       );
       setInvitationStatus('declined');
-      alert('You have declined the invitation.');
-      navigate('/dashboard');
     } catch (error) {
       console.error('Error declining invitation:', error);
-      setError('Failed to decline invitation. Please try again later.');
+      setError(apiErrorMessage(error, "Couldn't decline the invitation"));
     }
   };  
 
-  if (loading) return <div>Loading...</div>;
+  const accepted = invitationStatus === 'accepted';
+  const declined = invitationStatus === 'declined';
+
+  let heading;
+  let body;
+  let stubClass = 'bg-mustard';
+  let stub;
+
+  if (error) {
+    heading = "This invitation didn't work";
+    body = error;
+    stub = (
+      <Link to="/my-trips" className="btn-dark">
+        See my trips
+      </Link>
+    );
+  } else if (accepted) {
+    heading = "You're on the trip";
+    body = 'You have joined this trip. Everything the group plans will show up on its calendar.';
+    stubClass = 'bg-lagoon-light';
+    stub = (
+      <Link to={`/trip/${tripId}`} className="btn-primary">
+        Open trip
+      </Link>
+    );
+  } else if (declined) {
+    heading = 'Invitation declined';
+    body = "You won't be added to this trip. If you change your mind, ask the organiser to invite you again.";
+    stubClass = 'bg-lagoon-light';
+    stub = (
+      <Link to="/my-trips" className="btn-dark">
+        Back to my trips
+      </Link>
+    );
+  } else {
+    heading = "You're invited";
+    body = invitedUser
+      ? `Hi ${invitedUser}, you've been invited to join a trip on Tourgether.`
+      : "You've been invited to join a trip on Tourgether.";
+    stub = (
+      <div className="flex flex-wrap items-center gap-2">
+        <button onClick={handleAccept} className="btn-dark">
+          Join trip
+        </button>
+        <button onClick={handleDecline} className="btn-ghost">
+          Decline
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="invitation-container">
-      <h1>Join the Trip!</h1>
-      {invitedUser && <p>Hi <strong>{invitedUser}</strong>, you have been invited to join this trip.</p>}
-      {error ? (
-        <p className="error-message">{error}</p>
-      ) : invitationStatus === 'accepted' ? (
-        <p>
-          You have already <strong style={{ color: 'green' }}>accepted</strong> this invitation.
-        </p>
-      ) : invitationStatus === 'declined' ? (
-        <p>
-          You have <strong style={{ color: 'red' }}>declined</strong> this invitation.
-        </p>
-      ) : (
-        <>
-          <p>You have been invited to join this trip. Click below to accept or decline the invitation.</p>
-          <button onClick={handleAccept} className="accept-button">Accept Invitation</button>
-          <button onClick={handleDecline} className="decline-button">Decline Invitation</button>
-        </>
-      )}
-      <p className="back-to-dashboard">
-        <a href="/dashboard">See My Trips</a>
-      </p>
+    <div className="text-left">
+      <Navbar overlay />
+      <Scene className="-mt-[76px] min-h-screen pt-[76px]" sunClassName="right-[14%] top-[24%] h-72 w-72">
+        <main className="relative z-10 flex min-h-[calc(100vh-76px)] items-center justify-center px-4 py-10">
+          {loading ? (
+            <LoadingState message="Checking your invitation..." />
+          ) : (
+            <Ticket
+              stacked
+              className="w-full max-w-md"
+              main={
+                <div className="p-2 sm:p-4">
+                  <h1 className="font-display text-4xl text-ink">{heading}</h1>
+                  <p className={`mt-3 ${error ? 'font-bold text-red-700' : 'text-ink-soft'}`} role={error ? 'alert' : undefined}>
+                    {body}
+                  </p>
+                </div>
+              }
+              stubClassName={`px-6 py-5 ${stubClass}`}
+              stub={stub}
+            />
+          )}
+        </main>
+      </Scene>
     </div>
   );
 };

@@ -8,6 +8,7 @@ const userRoutes = require('./routes/userRoutes');
 const tripRoutes = require('./routes/tripRoutes');
 const userTripDateRoutes = require('./routes/userTripDateRoutes');
 const eventRoutes = require('./routes/eventRoutes');
+const pollRoutes = require('./routes/pollRoutes');
 
 const app = express();
 
@@ -77,6 +78,7 @@ loadSecrets().then(() => {
   // **🚀 API Routes**
   app.use('/api/usertripdate', userTripDateRoutes);
   app.use('/api/events', eventRoutes);
+  app.use('/api/polls', pollRoutes);
   app.use('/api/users', userRoutes);
   app.use('/api/trips', tripRoutes); 
 

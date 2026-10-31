@@ -1,7 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { CalendarPlus, ListChecks, Trash2, UserPlus, Users, X } from "lucide-react";
 import axios from "axios";
 import Navbar from "../../components/Navbar/Navbar";
+import Avatar from "../../components/Avatar/Avatar";
+import Modal from "../../components/Modal/Modal";
+import ConfirmDialog from "../../components/Modal/ConfirmDialog";
+import PageLayout from "../../components/PageLayout/PageLayout";
+import { ErrorState, LoadingState } from "../../components/PageState/PageState";
+import { useToast } from "../../components/Toast/Toast";
+import TimePicker from "../../components/TimePicker/TimePicker";
+import TripPolls from "./TripPolls";
 import { useCalendarApp, ScheduleXCalendar } from "@schedule-x/react";
 import {
   createViewDay,
@@ -12,9 +21,15 @@ import { createCalendarControlsPlugin } from "@schedule-x/calendar-controls";
 import { createEventsServicePlugin } from "@schedule-x/events-service";
 import { createEventModalPlugin } from '@schedule-x/event-modal'
 import "@schedule-x/theme-default/dist/index.css";
-import "./Trip.css";
 import dayjs from "dayjs";
 import { API_URL } from "../../config";
+import { apiErrorMessage } from "../../lib/apiError";
+import { formatDate } from "../../lib/trips";
+
+// The calendar plugins live at module level, so the drag handler reaches the current
+// trip and the toast function through these refs (set inside the component).
+const tripRef = { current: null };
+const notifyRef = { current: () => {} };
 
 // Plugins
 const calendarControlsPlugin = createCalendarControlsPlugin({
@@ -28,6 +43,7 @@ const dragAndDropPlugin = createDragAndDropPlugin({
       onDrop: ({ event, start, end, revert }) => {
         console.log("Dragged Event:", event);
         
+        const trip = tripRef.current;
         if (!trip || !trip.startDate || !trip.endDate) {
           console.warn("Trip details not loaded yet.");
           return;
@@ -40,7 +56,7 @@ const dragAndDropPlugin = createDragAndDropPlugin({
   
         if (newStartDate < tripStart || newEndDate > tripEnd) {
           console.warn("Drag restricted: Event cannot be moved outside trip dates.");
-          alert(`Event must stay between ${tripStart} and ${tripEnd}`);
+          notifyRef.current(`Events have to stay between ${tripStart} and ${tripEnd}.`, "error");
           revert(); 
         } else {
           console.log("Event moved successfully.");
@@ -53,6 +69,7 @@ const dragAndDropPlugin = createDragAndDropPlugin({
 const Trip = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [trip, setTrip] = useState(null);
   const [error, setError] = useState("");
   const [selectedDates, setSelectedDates] = useState([]);
@@ -63,6 +80,8 @@ const Trip = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const [members, setMembers] = useState([]);
   const [showManageMembers, setShowManageMembers] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [confirmingTripDelete, setConfirmingTripDelete] = useState(false);
 
   const [newEvent, setNewEvent] = useState({
     title: "",
@@ -70,6 +89,11 @@ const Trip = () => {
     startTime: "",
     endTime: "",
   });
+
+  useEffect(() => {
+    tripRef.current = trip;
+    notifyRef.current = showToast;
+  }, [trip, showToast]);
 
   // Calendar setup
   const calendar = useCalendarApp({
@@ -269,9 +293,7 @@ const Trip = () => {
   };
   const handleDeleteEvent = async () => {
     if (!editingEvent) return;
-
-    const confirmDelete = window.confirm("Are you sure you want to delete this event?");
-    if (!confirmDelete) return; // Exit if user cancels
+    setConfirmingDelete(false);
 
     const authToken = localStorage.getItem("authToken");
 
@@ -289,7 +311,7 @@ const Trip = () => {
         setEditingEvent(null);
         setNewEvent({ title: "", date: "", startTime: "", endTime: "" });
 
-        alert("Event deleted successfully!");
+        showToast("Event deleted", "success");
     } catch (err) {
         console.error("Error deleting event:", err);
         setErrorMessage("Failed to delete the event. Please try again.");
@@ -304,9 +326,10 @@ const Trip = () => {
         { email },
         { headers: { Authorization: `Bearer ${authToken}` } }
       );
-      alert("Invitation sent successfully.");
+      showToast(`Invite sent to ${email}`, "success");
     } catch (error) {
       console.error("Error inviting member:", error);
+      showToast(apiErrorMessage(error, "Couldn't send the invite"), "error");
     }
   };
 
@@ -318,179 +341,305 @@ const Trip = () => {
         { headers: { Authorization: `Bearer ${authToken}` } }
       );
       setMembers((prev) => prev.filter((member) => member._id !== memberId));
-      alert("Member removed successfully.");
+      showToast("Member removed", "success");
     } catch (error) {
       console.error("Error removing member:", error);
+      showToast(apiErrorMessage(error, "Couldn't remove that member"), "error");
     }
   };
 
+  const isOrganiser = trip?.createdBy?._id === userId;
+
+  const handleDeleteTrip = async () => {
+    setConfirmingTripDelete(false);
+    try {
+      await axios.delete(`${API_URL}/api/trips/${id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` },
+      });
+      showToast(`"${trip.name}" deleted`, "success");
+      navigate("/my-trips");
+    } catch (err) {
+      console.error("Error deleting trip:", err);
+      showToast(apiErrorMessage(err, "Couldn't delete this trip"), "error");
+    }
+  };
+
+  const closeEventForm = () => {
+    setShowCreateForm(false);
+    setIsEditing(false);
+    setEditingEvent(null);
+    setNewEvent({ title: "", date: "", startTime: "", endTime: "" });
+    setErrorMessage("");
+  };
+
+  const openNewEventForm = () => {
+    setIsEditing(false);
+    setEditingEvent(null);
+    setErrorMessage("");
+    setShowCreateForm(true);
+  };
+
   if (error) {
-    return <div className="error-message">{error}</div>;
+    return (
+      <div className="min-h-screen bg-paper text-left">
+        <Navbar />
+        <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+          <ErrorState message={error} onRetry={() => window.location.reload()} />
+        </main>
+      </div>
+    );
   }
 
   if (!trip) {
-    return <div className="loading-message">Loading trip details...</div>;
+    return (
+      <div className="min-h-screen bg-paper text-left">
+        <Navbar />
+        <LoadingState message="Loading trip details..." />
+      </div>
+    );
   }
 
+  const memberPhoto = (member) => (member.profilePicture ? `${API_URL}/${member.profilePicture}` : undefined);
+
   return (
-    <div className="trip-details-container">
-      <Navbar />
-      <div className="header">
-        <button className="back-button" onClick={() => navigate("/my-trips")}>
-          Back to Trips
-        </button>
-        <h1 className="trip-title">{trip.name}</h1>
-        <button
-          className="view-all-events-button"
-          onClick={() => navigate(`/trip/${id}/events`)}
-        >
-          View All Events
-        </button>
+    <PageLayout
+      back={{ to: "/my-trips", label: "My trips" }}
+      title={trip.name}
+      subtitle={`${formatDate(trip.startDate)} to ${formatDate(trip.endDate)}`}
+      actions={
+        <>
+              <button className="btn-primary" onClick={openNewEventForm}>
+                <CalendarPlus size={18} aria-hidden="true" />
+                Add event
+              </button>
+              <button className="btn-ghost" onClick={() => navigate(`/trip/${id}/events`)}>
+                <ListChecks size={18} aria-hidden="true" />
+                All events
+              </button>
+              <button className="btn-ghost" onClick={() => setShowManageMembers(true)}>
+                <Users size={18} aria-hidden="true" />
+                Members
+              </button>
+              {isOrganiser && (
+                <button className="btn-ghost" onClick={() => setConfirmingTripDelete(true)}>
+                  <Trash2 size={18} aria-hidden="true" />
+                  Delete trip
+                </button>
+              )}
+        </>
+      }
+    >
+        {/* Who's on the trip */}
+        <div className="mb-6 flex w-fit items-center gap-3 rounded-full bg-white py-2 pl-3 pr-4 drop-shadow-ticket">
+          <ul className="flex -space-x-1.5" aria-label="Trip members">
+            {members.slice(0, 6).map((member) => (
+              <li key={member._id} title={member.name}>
+                <Avatar src={memberPhoto(member)} name={member.name} size="sm" className="ring-2 ring-white" />
+              </li>
+            ))}
+          </ul>
+          {members.length > 6 && <span className="text-sm font-bold text-ink-soft">+{members.length - 6}</span>}
+          {isOrganiser && (
+            <button
+              className="inline-flex items-center gap-1.5 rounded-full border-0 bg-lagoon-light px-3 py-1.5 text-sm font-extrabold text-ink hover:bg-sky"
+              onClick={() => setShowManageMembers(true)}
+            >
+              <UserPlus size={14} aria-hidden="true" />
+              Invite
+            </button>
+          )}
+        </div>
 
-        <button
-          className="create-event-button"
-          onClick={() => setShowCreateForm(true)}
-        >
-          Create Event
-        </button>
-        <button
-            className="manage-members-button"
-            onClick={() => setShowManageMembers(true)}
-          >
-            Manage Members
-          </button>
-      </div>
-      <div className="calendar-section">
-        <ScheduleXCalendar calendarApp={calendar} />
-      </div>
+        <div className="rounded-3xl bg-white p-3 drop-shadow-ticket sm:p-5">
+          <ScheduleXCalendar calendarApp={calendar} />
+        </div>
 
-      {showManageMembers && (
-        <div className="manage-members-overlay">
-          <div className="manage-members-modal">
-            <h2>Manage Members</h2>
-            <p><strong>This trip was created by:</strong> {trip.createdBy.name}</p>
-            <ul className="members-list">
-              {members.map((member) => (
-                <li key={member._id} className="member-item">
-                  {member.name} ({member.email})
-                  {trip?.createdBy._id === userId && member._id !== trip.createdBy._id && (
-                    <button
-                      className="remove-member-button"
-                      onClick={() => handleRemoveMember(member._id)}
-                    >
-                      Remove
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
+        {userId && (
+          <TripPolls
+            trip={trip}
+            userId={userId}
+            isOrganiser={isOrganiser}
+            onEventCreated={(event) =>
+              setSelectedDates((prev) => [
+                ...prev,
+                {
+                  id: event._id,
+                  title: event.title,
+                  start: dayjs(`${event.date} ${event.startTime}`).format("YYYY-MM-DD HH:mm"),
+                  end: dayjs(`${event.date} ${event.endTime}`).format("YYYY-MM-DD HH:mm"),
+                },
+              ])
+            }
+          />
+        )}
 
-            {/* Add Member Section */}
-            {trip?.createdBy._id === userId && (
-              <div className="add-member-section">
-                <h3>Add Member</h3>
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const email = e.target.email.value;
-                    handleInviteMember(email);
-                    e.target.reset();
-                  }}
-                >
-                  <input
-                    type="email"
-                    name="email"
-                    placeholder="Enter member's email"
-                    required
-                  />
-                  <button type="submit" className="invite-button">Invite</button>
-                </form>
+      {/* Members */}
+      <Modal open={showManageMembers} onClose={() => setShowManageMembers(false)} title="Members">
+        <p className="text-sm text-ink-soft">
+          Organised by <span className="font-bold text-ink">{trip.createdBy.name}</span>
+        </p>
+
+        <ul className="mt-4 space-y-3">
+          {members.map((member) => (
+            <li key={member._id} className="flex items-center gap-3">
+              <Avatar src={memberPhoto(member)} name={member.name} size="sm" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-bold text-ink">{member.name}</p>
+                <p className="truncate text-sm text-ink-soft">{member.email}</p>
               </div>
-            )}
+              {member._id === trip.createdBy._id ? (
+                <span className="rounded-full bg-mustard px-2.5 py-1 text-xs font-extrabold text-ink">Organiser</span>
+              ) : (
+                isOrganiser && (
+                  <button
+                    type="button"
+                    aria-label={`Remove ${member.name}`}
+                    onClick={() => handleRemoveMember(member._id)}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border-0 bg-transparent p-0 text-ink hover:bg-lagoon-light"
+                  >
+                    <X size={16} aria-hidden="true" />
+                  </button>
+                )
+              )}
+            </li>
+          ))}
+        </ul>
 
-            <button className="close-button" onClick={() => setShowManageMembers(false)}>
-              Close
+        {isOrganiser && (
+          <form
+            className="mt-6"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleInviteMember(e.target.email.value);
+              e.target.reset();
+            }}
+          >
+            <label htmlFor="invite-email" className="field-label">
+              Invite someone
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="invite-email"
+                type="email"
+                name="email"
+                placeholder="friend@example.com"
+                autoComplete="off"
+                required
+                className="field"
+              />
+              <button type="submit" className="btn-dark shrink-0">
+                Send invite
+              </button>
+            </div>
+          </form>
+        )}
+
+        <div className="mt-6 flex justify-end">
+          <button type="button" className="btn-ghost" onClick={() => setShowManageMembers(false)}>
+            Done
+          </button>
+        </div>
+      </Modal>
+
+      {/* Create / edit event */}
+      <Modal open={showCreateForm} onClose={closeEventForm} title={isEditing ? "Edit event" : "Add event"} className="overflow-visible">
+        <form onSubmit={handleSubmitEvent} className="space-y-4" noValidate>
+          <div>
+            <label htmlFor="event-title" className="field-label">
+              Event
+            </label>
+            <input
+              id="event-title"
+              type="text"
+              className="field"
+              placeholder="Dinner at the harbour"
+              value={newEvent.title}
+              onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="event-date" className="field-label">
+              Date
+            </label>
+            <input
+              id="event-date"
+              type="date"
+              className="field"
+              value={newEvent.date}
+              min={trip.startDate ? dayjs(trip.startDate).format("YYYY-MM-DD") : ""}
+              max={trip.endDate ? dayjs(trip.endDate).format("YYYY-MM-DD") : ""}
+              onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
+              required
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="event-start" className="field-label">
+                Starts
+              </label>
+              <TimePicker
+                id="event-start"
+                value={newEvent.startTime}
+                onChange={(startTime) => setNewEvent({ ...newEvent, startTime })}
+              />
+            </div>
+            <div>
+              <label htmlFor="event-end" className="field-label">
+                Ends
+              </label>
+              <TimePicker
+                id="event-end"
+                value={newEvent.endTime}
+                onChange={(endTime) => setNewEvent({ ...newEvent, endTime })}
+              />
+            </div>
+          </div>
+
+          {errorMessage && (
+            <p role="alert" className="text-sm font-bold text-red-700">
+              {errorMessage}
+            </p>
+          )}
+
+          <div className="flex flex-wrap items-center gap-2 pt-2">
+            {isEditing && (
+              <button
+                type="button"
+                className="mr-auto border-0 bg-transparent p-0 text-sm font-extrabold text-plum underline hover:text-plum"
+                onClick={() => setConfirmingDelete(true)}
+              >
+                Delete event
+              </button>
+            )}
+            <button type="button" className="btn-ghost ml-auto" onClick={closeEventForm}>
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary">
+              {isEditing ? "Save changes" : "Add event"}
             </button>
           </div>
-        </div>
-      )}
+        </form>
+      </Modal>
 
-      {showCreateForm && (
-      <div className="event-form-overlay">
-        <div className="event-form">
-            <h2>{isEditing ? "Edit Event" : "Create Event"}</h2>
-            <form onSubmit={handleSubmitEvent}>
-                <label>
-                    Event Title:
-                    <input
-                        type="text"
-                        value={newEvent.title}
-                        onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                        required
-                    />
-                </label>
-                <label>
-                    Date:
-                    <input
-                        type="date"
-                        value={newEvent.date}
-                        min={trip.startDate ? dayjs(trip.startDate).format("YYYY-MM-DD") : ""}
-                        max={trip.endDate ? dayjs(trip.endDate).format("YYYY-MM-DD") : ""}
-                        onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
-                        required
-                    />
-                </label>
-                <label>
-                    Start Time:
-                    <input
-                        type="time"
-                        value={newEvent.startTime}
-                        onChange={(e) => setNewEvent({ ...newEvent, startTime: e.target.value })}
-                        required
-                    />
-                </label>
-                <label>
-                    End Time:
-                    <input
-                        type="time"
-                        value={newEvent.endTime}
-                        onChange={(e) => setNewEvent({ ...newEvent, endTime: e.target.value })}
-                        required
-                    />
-                </label>
+      <ConfirmDialog
+        open={confirmingDelete}
+        title="Delete this event?"
+        message={`"${newEvent.title}" will be removed from the trip calendar for everyone.`}
+        confirmLabel="Delete event"
+        onCancel={() => setConfirmingDelete(false)}
+        onConfirm={handleDeleteEvent}
+      />
 
-                {errorMessage && <div className="error-message-box">{errorMessage}</div>}
-
-                <button type="submit">{isEditing ? "Update Event" : "Add Event"}</button>
-                <button
-                    type="button"
-                    className="cancel-button"
-                    onClick={() => {
-                        setShowCreateForm(false);
-                        setIsEditing(false);
-                        setEditingEvent(null);
-                        setNewEvent({ title: "", date: "", startTime: "", endTime: "" });
-                    }}
-                >
-                    Cancel
-                </button>
-
-                {/* 🗑️ Delete Button: Only Show When Editing an Event */}
-                {isEditing && (
-                    <button
-                        type="button"
-                        className="delete-button"
-                        onClick={handleDeleteEvent}
-                    >
-                        Delete Event
-                    </button>
-                )}
-            </form>
-        </div>
-      </div>
-)}
-
-    </div>
+      <ConfirmDialog
+        open={confirmingTripDelete}
+        title="Delete this trip?"
+        message={`"${trip.name}" will be deleted for everyone on it, along with its events, polls and availability. This can't be undone.`}
+        confirmLabel="Delete trip"
+        onCancel={() => setConfirmingTripDelete(false)}
+        onConfirm={handleDeleteTrip}
+      />
+    </PageLayout>
   );
 };
 

@@ -27,6 +27,10 @@ export default {
         "ticket-lg": "0 26px 36px rgba(15, 76, 87, 0.26)",
       },
       keyframes: {
+        "toast-in": {
+          "0%": { opacity: "0", transform: "translateY(12px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
         flip: {
           "0%": { transform: "rotateX(-90deg)", opacity: "0" },
           "100%": { transform: "rotateX(0deg)", opacity: "1" },
@@ -34,6 +38,7 @@ export default {
       },
       animation: {
         flip: "flip 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both",
+        "toast-in": "toast-in 0.2s ease-out both",
       },
     },
   },

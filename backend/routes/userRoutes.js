@@ -6,6 +6,7 @@ const {
   updateUser,
   logoutUser,
   checkEmail,
+  lookupUser,
   getIdsByEmails,
   requestPasswordReset,
   resetPassword,
@@ -36,6 +37,9 @@ router.post('/login', loginUser);
 
 // Route to check if an email is registered
 router.get('/check-email', checkEmail); // New route added here
+
+// Find a registered user by email or name (trip invitations; signed-in users only)
+router.get('/lookup', protect, lookupUser);
 
 // Route to get user profile (protected)
 router.get('/profile', protect, getUserDetails);

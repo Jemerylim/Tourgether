@@ -17,9 +17,9 @@ const legs = [
   {
     icon: Compass,
     label: "Where to",
-    text: "Not sure yet? Take the travel quiz for ideas that match how you like to explore.",
+    text: "Not sure yet? Answer five questions and we'll suggest a destination that suits you.",
     to: "/quiz",
-    cta: "Take the quiz",
+    cta: "Help me pick a place",
   },
   {
     icon: CalendarDays,

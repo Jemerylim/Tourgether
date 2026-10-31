@@ -140,6 +140,39 @@ const checkEmail = async (req, res) => {
   }
 };
 
+// Find one registered user by email or by name, for inviting people to a trip.
+// Names are not unique, so a name that matches several people is rejected (409).
+const lookupUser = async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  if (!q) {
+    return res.status(400).json({ message: 'Enter an email or a name.' });
+  }
+
+  try {
+    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const exact = new RegExp(`^${escaped}$`, 'i');
+    const byEmail = q.includes('@');
+    const users = await User.find(byEmail ? { email: exact } : { name: exact })
+      .select('_id name email')
+      .limit(3);
+
+    if (users.length === 0) {
+      return res.status(404).json({
+        message: byEmail ? 'Email not registered' : `Nobody is registered with the name "${q}".`,
+      });
+    }
+    if (users.length > 1) {
+      return res.status(409).json({
+        message: `More than one person is named "${q}". Invite them by email instead.`,
+      });
+    }
+
+    res.status(200).json({ user: users[0] });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 const getIdsByEmails = async (req, res) => {
   const { emails } = req.body; // Fix: Correctly access emails from req.body
   console.log("Emails received:", emails);
@@ -337,6 +370,7 @@ module.exports = {
   updateUser,
   logoutUser,
   checkEmail,
+  lookupUser,
   getIdsByEmails,
   requestPasswordReset,
   resetPassword,

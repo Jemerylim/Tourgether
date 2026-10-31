@@ -1,6 +1,9 @@
 const nodemailer = require('nodemailer');
 const Trip = require('../models/Trip');
 const User = require('../models/User');
+const Poll = require('../models/Poll');
+const Event = require('../models/Event');
+const UserTripDate = require('../models/UserTripDate');
 const mongoose = require('mongoose');
 // const asyncHandler = require("express-async-handler");
 
@@ -15,11 +18,15 @@ const transporter = nodemailer.createTransport({
 
 // Create a new trip
 exports.createTrip = async (req, res) => {
-  const { name, members, startDate, endDate, description } = req.body;
+  const { name, members = [], startDate, endDate, description } = req.body;
   const createdBy = req.user._id;
 
-  if (!name || !members || members.length === 0) {
-    return res.status(400).json({ message: 'Name and members are required to create a trip' });
+  // Members are optional: a trip can be created solo and people invited later.
+  if (!name) {
+    return res.status(400).json({ message: 'A trip name is required' });
+  }
+  if (!Array.isArray(members)) {
+    return res.status(400).json({ message: 'Members must be a list of user IDs' });
   }
 
   try {
@@ -59,9 +66,15 @@ exports.createTrip = async (req, res) => {
       return transporter.sendMail(mailOptions);
     });
 
-    await Promise.all(emailPromises);
+    // The trip already exists, so a failed email (for example missing mail credentials)
+    // must not make the request fail. Report how many could not be sent instead.
+    const emailResults = await Promise.allSettled(emailPromises);
+    const failedEmails = emailResults.filter((result) => result.status === 'rejected');
+    failedEmails.forEach((result) =>
+      console.error('Invitation email failed:', result.reason && result.reason.message)
+    );
 
-    res.status(201).json({ success: true, data: trip });
+    res.status(201).json({ success: true, data: trip, emailsFailed: failedEmails.length });
   } catch (error) {
     console.error('Error creating trip:', error);
     res.status(500).json({ success: false, message: 'Error creating trip', error: error.message });
@@ -122,10 +135,20 @@ exports.updateTrip = async (req, res) => {
 exports.deleteTrip = async (req, res) => {
   const { id } = req.params;
   try {
-    const trip = await Trip.findByIdAndDelete(id);
+    const trip = await Trip.findById(id);
     if (!trip) {
       return res.status(404).json({ success: false, message: 'Trip not found' });
     }
+    if (!trip.createdBy.equals(req.user._id)) {
+      return res.status(403).json({ success: false, message: 'Only the trip organiser can delete this trip' });
+    }
+    await trip.deleteOne();
+    // Polls, events and availability only make sense inside their trip
+    await Promise.all([
+      Poll.deleteMany({ trip: trip._id }),
+      Event.deleteMany({ trip: trip._id }),
+      UserTripDate.deleteMany({ tripId: trip._id }),
+    ]);
     res.status(200).json({ success: true, message: 'Trip deleted successfully' });
   } catch (error) {
     console.error('Error deleting trip:', error);

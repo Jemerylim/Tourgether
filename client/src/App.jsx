@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
-import { BrowserRouter as Router } from 'react-router-dom'; 
-import './App.css';
-import AppRoutes from './router'; 
+import React from 'react';
+import { BrowserRouter as Router } from 'react-router-dom';
+import AppRoutes from './router';
+import { ToastProvider } from './components/Toast/Toast';
 
 function App() {
   return (
     <Router>
-      <AppRoutes />
+      <ToastProvider>
+        <AppRoutes />
+      </ToastProvider>
     </Router>
   );
 }

@@ -17,7 +17,7 @@ const AuthLayout = ({ image, imageAlt = "", caption, footer, imageSide = "right"
         sunClassName={imageOnLeft ? "left-[12%] top-[26%] h-80 w-80" : "right-[12%] top-[26%] h-80 w-80"}
       >
         <main className="relative z-10 mx-auto grid min-h-[calc(100vh-76px)] max-w-6xl items-center px-4 py-10 sm:px-6 lg:grid-cols-2">
-          <div className={imageOnLeft ? "lg:order-2 lg:justify-self-end" : undefined}>
+          <div className={imageOnLeft ? "lg:col-start-2" : undefined}>
             {caption && (
               <p className="max-w-md font-display text-4xl leading-[1.05] text-ink sm:text-5xl">{caption}</p>
             )}
