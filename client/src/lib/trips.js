@@ -29,6 +29,17 @@ export const splitTrips = (trips) => {
   return { upcoming, past };
 };
 
+// Started (today counts) and not finished yet
+export const isHappeningNow = (trip) =>
+  Boolean(trip.startDate) && !isPast(trip) && daysBetween(trip.startDate, new Date()) >= 0;
+
+// Length of the trip in days, counting both ends, or null without both dates
+export const tripLength = (trip) =>
+  trip.startDate && trip.endDate ? daysBetween(trip.startDate, trip.endDate) + 1 : null;
+
+// Which day of the trip today is (1 on the first day)
+export const dayOfTrip = (trip) => daysBetween(trip.startDate, new Date()) + 1;
+
 export const countdownLabel = (trip) => {
   if (isPast(trip)) return null;
   if (!trip.startDate) return "Dates to be decided";

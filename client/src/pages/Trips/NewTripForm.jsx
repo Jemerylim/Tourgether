@@ -112,7 +112,12 @@ const CreateTrip = () => {
       if (tripResponse.data.emailsFailed > 0) {
         showToast("Trip created, but the invitation emails couldn't be sent. Let your group know it's ready.", "info");
       }
-      navigate(`/trip/${tripResponse.data.data._id}`);
+      // Replace the form in history, and hand on where it was opened from, so the new
+      // trip's back link (and the browser's Back) skip the finished form.
+      navigate(`/trip/${tripResponse.data.data._id}`, {
+        replace: true,
+        state: location.state?.from ? { from: location.state.from } : undefined,
+      });
     } catch (err) {
       console.error("Error creating trip:", err.response?.data?.message || err.message);
       setError(apiErrorMessage(err, "Couldn't create the trip"));
@@ -137,7 +142,7 @@ const CreateTrip = () => {
 
   return (
     <PageLayout
-      back={{ to: "/my-trips", label: "My trips" }}
+      back={location.state?.from || { to: "/my-trips", label: "My trips" }}
       title="Create a new trip"
       subtitle="Name it, pick the dates and invite the people coming along."
     >

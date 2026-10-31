@@ -1,31 +1,27 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { config } = require('../config/env');
 
 const protect = async (req, res, next) => {
-  let token;
-
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    try {
-      // Get the token from the header
-      token = req.headers.authorization.split(' ')[1];
-
-      // Decode the token and get the user ID
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-      // Find the user in the database and attach to the request object
-      req.user = await User.findById(decoded.id).select('-password');
-
-      next();
-    } catch (error) {
-      res.status(401).json({ message: 'Not authorized, token failed' });
-    }
+  const header = req.headers.authorization || '';
+  if (!header.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'Not authorized, no token' });
   }
 
-  if (!token) {
-    res.status(401).json({ message: 'Not authorized, no token' });
+  try {
+    // Decode the token and attach the user (without password) to the request
+    const decoded = jwt.verify(header.split(' ')[1], config.jwtSecret);
+    req.user = await User.findById(decoded.id).select('-password');
+  } catch (error) {
+    return res.status(401).json({ message: 'Not authorized, token failed' });
   }
+
+  // A valid token for a deleted account
+  if (!req.user) {
+    return res.status(401).json({ message: 'Not authorized, user not found' });
+  }
+
+  next();
 };
-
-
 
 module.exports = { protect };

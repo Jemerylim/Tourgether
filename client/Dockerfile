@@ -4,7 +4,10 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --force
 COPY . .
-RUN npm run build
+# Optional: docker compose build --build-arg VITE_API_URL=https://api.example.com
+# overrides client/.env.production for this image.
+ARG VITE_API_URL
+RUN if [ -z "$VITE_API_URL" ]; then unset VITE_API_URL; fi && npm run build
 
 # Use Nginx to serve the frontend
 FROM nginx:alpine

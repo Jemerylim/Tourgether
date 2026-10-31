@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useLocation, useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import dayjs from "dayjs";
 import { CalendarDays } from "lucide-react";
@@ -14,6 +14,7 @@ import { apiErrorMessage } from "../../lib/apiError";
 const AllEvents = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [events, setEvents] = useState({});
   const [notesState, setNotesState] = useState({});
   const [saveStatus, setSaveStatus] = useState({});
@@ -26,7 +27,7 @@ const AllEvents = () => {
     const fetchEvents = async () => {
       const authToken = localStorage.getItem("authToken");
       if (!authToken) {
-        return navigate("/login");
+        return navigate("/login", { replace: true });
       }
 
       try {
@@ -200,7 +201,7 @@ const AllEvents = () => {
   return (
     <PageLayout
       maxWidth="max-w-4xl"
-      back={{ to: `/trip/${id}`, label: trip ? trip.name : "Back to trip" }}
+      back={location.state?.from || { to: `/trip/${id}`, label: trip ? trip.name : "Back to trip" }}
       title="All events"
       subtitle={trip ? `The plan for ${trip.name}, day by day.` : undefined}
     >

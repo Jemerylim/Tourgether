@@ -7,7 +7,7 @@ import PageLayout from "../../components/PageLayout/PageLayout";
 import PhotoDrop from "../../components/PhotoDrop/PhotoDrop";
 import { ErrorState, LoadingState } from "../../components/PageState/PageState";
 import { useToast } from "../../components/Toast/Toast";
-import { API_URL } from "../../config";
+import { API_URL, assetUrl } from "../../config";
 import { apiErrorMessage } from "../../lib/apiError";
 
 const Profile = () => {
@@ -27,7 +27,7 @@ const Profile = () => {
     const fetchUserProfile = async () => {
       const token = localStorage.getItem("authToken");
       if (!token) {
-        navigate("/login");
+        navigate("/login", { replace: true });
         return;
       }
       try {
@@ -43,7 +43,7 @@ const Profile = () => {
         console.error("Error fetching profile:", err);
         if (err.response?.status === 401) {
           localStorage.removeItem("authToken");
-          navigate("/login");
+          navigate("/login", { replace: true });
           return;
         }
         setError(apiErrorMessage(err, "Couldn't load your profile"));
@@ -109,7 +109,7 @@ const Profile = () => {
     setIsEditing(false);
   };
 
-  const photoUrl = user?.profilePicture ? `${API_URL}/${user.profilePicture}` : undefined;
+  const photoUrl = assetUrl(user?.profilePicture);
 
   let content;
   if (error) {

@@ -52,7 +52,7 @@ const Login = () => {
             localStorage.setItem("userEmail", email);
 
             const redirectUrl = new URLSearchParams(location.search).get("redirect");
-            navigate(redirectUrl || "/dashboard");
+            navigate(redirectUrl || "/dashboard", { replace: true });
         } catch (error) {
             setError(loginErrorMessage(error));
         }
@@ -95,7 +95,7 @@ const Login = () => {
                     <button
                         type="button"
                         className="bg-transparent p-0 font-bold text-plum underline underline-offset-2 hover:text-ink border-0"
-                        onClick={() => navigate("/register")}
+                        onClick={() => navigate(`/register${location.search}`)}
                     >
                         Register here
                     </button>

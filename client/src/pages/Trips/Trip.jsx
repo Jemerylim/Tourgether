@@ -1,16 +1,28 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { CalendarPlus, ListChecks, Trash2, UserPlus, Users, X } from "lucide-react";
+import { useLocation, useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { Backpack, CalendarDays, CalendarPlus, ListChecks, Trash2, UserPlus, Users, Vote, Wallet, X } from "lucide-react";
 import axios from "axios";
 import Navbar from "../../components/Navbar/Navbar";
 import Avatar from "../../components/Avatar/Avatar";
+import AvatarStack from "../../components/Avatar/AvatarStack";
 import Modal from "../../components/Modal/Modal";
 import ConfirmDialog from "../../components/Modal/ConfirmDialog";
 import PageLayout from "../../components/PageLayout/PageLayout";
 import { ErrorState, LoadingState } from "../../components/PageState/PageState";
 import { useToast } from "../../components/Toast/Toast";
 import TimePicker from "../../components/TimePicker/TimePicker";
+import SectionSidebar from "../../components/SectionSidebar/SectionSidebar";
+import InviteLink from "./InviteLink";
 import TripPolls from "./TripPolls";
+import TripExpenses from "./TripExpenses";
+import TripChecklist from "./TripChecklist";
+
+const SECTIONS = [
+  { value: "calendar", label: "Calendar", icon: CalendarDays },
+  { value: "polls", label: "Polls", icon: Vote },
+  { value: "expenses", label: "Expenses", icon: Wallet },
+  { value: "lists", label: "Packing & to-dos", icon: Backpack },
+];
 import { useCalendarApp, ScheduleXCalendar } from "@schedule-x/react";
 import {
   createViewDay,
@@ -22,9 +34,11 @@ import { createEventsServicePlugin } from "@schedule-x/events-service";
 import { createEventModalPlugin } from '@schedule-x/event-modal'
 import "@schedule-x/theme-default/dist/index.css";
 import dayjs from "dayjs";
-import { API_URL } from "../../config";
+import { API_URL, assetUrl } from "../../config";
 import { apiErrorMessage } from "../../lib/apiError";
 import { formatDate } from "../../lib/trips";
+import { fromHere } from "../../lib/navigation";
+import { cn } from "../../lib/utils";
 
 // The calendar plugins live at module level, so the drag handler reaches the current
 // trip and the toast function through these refs (set inside the component).
@@ -69,7 +83,16 @@ const dragAndDropPlugin = createDragAndDropPlugin({
 const Trip = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { showToast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const section = SECTIONS.some((item) => item.value === searchParams.get("section"))
+    ? searchParams.get("section")
+    : "calendar";
+  // Each section is its own history entry so Back steps through them. Carry the route
+  // state along so the header's back link still knows which page opened the trip.
+  const showSection = (next) => setSearchParams({ section: next }, { state: location.state });
+  const back = location.state?.from || { to: "/my-trips", label: "My trips" };
   const [trip, setTrip] = useState(null);
   const [error, setError] = useState("");
   const [selectedDates, setSelectedDates] = useState([]);
@@ -132,7 +155,7 @@ const Trip = () => {
       const authToken = localStorage.getItem("authToken");
       if (!authToken) {
         setError("Authorization token is missing. Please log in again.");
-        return navigate("/login");
+        return navigate("/login", { replace: true });
       }
 
       try {
@@ -357,7 +380,7 @@ const Trip = () => {
         headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` },
       });
       showToast(`"${trip.name}" deleted`, "success");
-      navigate("/my-trips");
+      navigate("/my-trips", { replace: true });
     } catch (err) {
       console.error("Error deleting trip:", err);
       showToast(apiErrorMessage(err, "Couldn't delete this trip"), "error");
@@ -377,6 +400,7 @@ const Trip = () => {
     setEditingEvent(null);
     setErrorMessage("");
     setShowCreateForm(true);
+    showSection("calendar"); // so the new event is in view once it's saved
   };
 
   if (error) {
@@ -399,11 +423,12 @@ const Trip = () => {
     );
   }
 
-  const memberPhoto = (member) => (member.profilePicture ? `${API_URL}/${member.profilePicture}` : undefined);
+  const memberPhoto = (member) => assetUrl(member.profilePicture);
 
   return (
     <PageLayout
-      back={{ to: "/my-trips", label: "My trips" }}
+      maxWidth="max-w-7xl"
+      back={back}
       title={trip.name}
       subtitle={`${formatDate(trip.startDate)} to ${formatDate(trip.endDate)}`}
       actions={
@@ -412,7 +437,7 @@ const Trip = () => {
                 <CalendarPlus size={18} aria-hidden="true" />
                 Add event
               </button>
-              <button className="btn-ghost" onClick={() => navigate(`/trip/${id}/events`)}>
+              <button className="btn-ghost" onClick={() => navigate(`/trip/${id}/events`, { state: fromHere(location, trip.name) })}>
                 <ListChecks size={18} aria-hidden="true" />
                 All events
               </button>
@@ -431,14 +456,7 @@ const Trip = () => {
     >
         {/* Who's on the trip */}
         <div className="mb-6 flex w-fit items-center gap-3 rounded-full bg-white py-2 pl-3 pr-4 drop-shadow-ticket">
-          <ul className="flex -space-x-1.5" aria-label="Trip members">
-            {members.slice(0, 6).map((member) => (
-              <li key={member._id} title={member.name}>
-                <Avatar src={memberPhoto(member)} name={member.name} size="sm" className="ring-2 ring-white" />
-              </li>
-            ))}
-          </ul>
-          {members.length > 6 && <span className="text-sm font-bold text-ink-soft">+{members.length - 6}</span>}
+          <AvatarStack people={members} />
           {isOrganiser && (
             <button
               className="inline-flex items-center gap-1.5 rounded-full border-0 bg-lagoon-light px-3 py-1.5 text-sm font-extrabold text-ink hover:bg-sky"
@@ -450,31 +468,40 @@ const Trip = () => {
           )}
         </div>
 
-        <div className="rounded-3xl bg-white p-3 drop-shadow-ticket sm:p-5">
-          <ScheduleXCalendar calendarApp={calendar} />
-        </div>
-
-        {userId && (
-          <TripPolls
-            trip={trip}
-            userId={userId}
-            isOrganiser={isOrganiser}
-            onEventCreated={(event) =>
-              setSelectedDates((prev) => [
-                ...prev,
-                {
-                  id: event._id,
-                  title: event.title,
-                  start: dayjs(`${event.date} ${event.startTime}`).format("YYYY-MM-DD HH:mm"),
-                  end: dayjs(`${event.date} ${event.endTime}`).format("YYYY-MM-DD HH:mm"),
-                },
-              ])
-            }
-          />
-        )}
+        {/* Sections: calendar, polls, money and lists */}
+        <SectionSidebar items={SECTIONS} value={section} onChange={showSection} label="Trip planner">
+          {/* The calendar stays mounted while hidden so Schedule-X keeps its state */}
+          <div className={cn("rounded-3xl bg-white p-3 drop-shadow-ticket sm:p-5", section !== "calendar" && "hidden")}>
+            <ScheduleXCalendar calendarApp={calendar} />
+          </div>
+          {userId && section === "polls" && (
+            <TripPolls
+              trip={trip}
+              userId={userId}
+              isOrganiser={isOrganiser}
+              onEventCreated={(event) =>
+                setSelectedDates((prev) => [
+                  ...prev,
+                  {
+                    id: event._id,
+                    title: event.title,
+                    start: dayjs(`${event.date} ${event.startTime}`).format("YYYY-MM-DD HH:mm"),
+                    end: dayjs(`${event.date} ${event.endTime}`).format("YYYY-MM-DD HH:mm"),
+                  },
+                ])
+              }
+            />
+          )}
+          {userId && section === "expenses" && (
+            <TripExpenses trip={trip} members={members} userId={userId} isOrganiser={isOrganiser} />
+          )}
+          {userId && section === "lists" && (
+            <TripChecklist trip={trip} members={members} userId={userId} isOrganiser={isOrganiser} />
+          )}
+        </SectionSidebar>
 
       {/* Members */}
-      <Modal open={showManageMembers} onClose={() => setShowManageMembers(false)} title="Members">
+      <Modal open={showManageMembers} onClose={() => setShowManageMembers(false)} title="Members" className="max-w-lg">
         <p className="text-sm text-ink-soft">
           Organised by <span className="font-bold text-ink">{trip.createdBy.name}</span>
         </p>
@@ -515,7 +542,7 @@ const Trip = () => {
             }}
           >
             <label htmlFor="invite-email" className="field-label">
-              Invite someone
+              Invite by email
             </label>
             <div className="flex gap-2">
               <input
@@ -533,6 +560,8 @@ const Trip = () => {
             </div>
           </form>
         )}
+
+        {isOrganiser && <InviteLink tripId={trip._id} tripName={trip.name} />}
 
         <div className="mt-6 flex justify-end">
           <button type="button" className="btn-ghost" onClick={() => setShowManageMembers(false)}>

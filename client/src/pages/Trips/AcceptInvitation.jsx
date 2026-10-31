@@ -23,7 +23,7 @@ const AcceptInvitation = () => {
   
       if (!authToken) {
         console.log('No auth token found, redirecting to login.');
-        navigate(`/login?redirect=/trip/${tripId}/accept?userId=${userId}`);
+        navigate(`/login?redirect=/trip/${tripId}/accept?userId=${userId}`, { replace: true });
         return;
       }
   
@@ -60,7 +60,7 @@ const AcceptInvitation = () => {
         } else if (error.response?.status === 401) {
           console.log('Session expired or unauthorized. Redirecting to login.');
           localStorage.removeItem('authToken');
-          navigate(`/login?redirect=/trip/${tripId}/accept?userId=${userId}`);
+          navigate(`/login?redirect=/trip/${tripId}/accept?userId=${userId}`, { replace: true });
         } else {
           console.error('Error fetching invitation status or profile:', error);
           setError(apiErrorMessage(error, "Couldn't check this invitation"));

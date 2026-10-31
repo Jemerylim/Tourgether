@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios"; // For API requests
 import registerImage from "../../assets/Register.png";
 import AuthLayout from "../../components/AuthLayout/AuthLayout";
@@ -15,6 +15,8 @@ const fields = [
 
 const Register = () => {
   const navigate = useNavigate();
+  // Carries ?redirect= (e.g. from an invite link) through to the login page
+  const { search } = useLocation();
 
   // State to hold user input
   const [formData, setFormData] = useState({
@@ -69,7 +71,8 @@ const Register = () => {
 
       console.log("Registration successful:", response.data);
 
-      navigate("/login", {
+      navigate(`/login${search}`, {
+        replace: true,
         state: { message: "Account created successfully! Please log in." },
       });
     } catch (err) {
@@ -98,7 +101,7 @@ const Register = () => {
         <button
           type="button"
           className="bg-transparent p-0 font-bold text-plum underline underline-offset-2 hover:text-ink border-0"
-          onClick={() => navigate("/login")}
+          onClick={() => navigate(`/login${search}`)}
         >
           Log in here
         </button>

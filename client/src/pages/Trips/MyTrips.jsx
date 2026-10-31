@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Plane, Plus } from "lucide-react";
 import Card from "../../components/Cards/Card";
@@ -12,10 +12,12 @@ import { API_URL } from "../../config";
 import { apiErrorMessage } from "../../lib/apiError";
 import useUserTrips from "../../lib/useUserTrips";
 import { countdownLabel, formatDate, splitTrips } from "../../lib/trips";
+import { fromHere } from "../../lib/navigation";
 
 // Every trip, split into upcoming and past.
 const MyTrips = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { showToast } = useToast();
   const { trips, userId, loading, error, reload, removeTrip } = useUserTrips();
   const { upcoming, past } = splitTrips(trips);
@@ -44,12 +46,12 @@ const MyTrips = () => {
       imageUrl={trip.imageUrl}
       badge={isPast ? "Completed" : countdownLabel(trip)}
       muted={isPast}
-      onClick={() => navigate(`/trip/${trip._id}`)}
+      onClick={() => navigate(`/trip/${trip._id}`, { state: fromHere(location, "My trips") })}
       onDelete={trip.createdBy?._id === userId ? () => setTripToDelete(trip) : undefined}
     />
   );
 
-  const createTrip = () => navigate("/create-trip");
+  const createTrip = () => navigate("/create-trip", { state: fromHere(location, "My trips") });
 
   let content;
   if (loading) {
@@ -82,7 +84,7 @@ const MyTrips = () => {
           ) : (
             <p className="text-ink-soft">
               No upcoming trips.{" "}
-              <Link to="/create-trip" className="font-extrabold text-plum underline hover:text-plum">
+              <Link to="/create-trip" state={fromHere(location, "My trips")} className="font-extrabold text-plum underline hover:text-plum">
                 Plan a trip
               </Link>
             </p>
