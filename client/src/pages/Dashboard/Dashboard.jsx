@@ -2,8 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Navbar from "../../components/Navbar/Navbar";
-import Card from "../../components/Cards/Card"; // Assuming Card component is created
-import "./Dashboard.css";
+import { Plane, Plus } from "lucide-react";
+import Card from "../../components/Cards/Card";
+import { API_URL } from "../../config";
 
 const Dashboard = () => {
   const [trips, setTrips] = useState([]);
@@ -22,7 +23,7 @@ const Dashboard = () => {
   
       try {
         // Fetch user profile to get userId
-        const userResponse = await axios.get("http://52.44.156.98:5000/api/users/profile", {
+        const userResponse = await axios.get(`${API_URL}/api/users/profile`, {
           headers: { Authorization: `Bearer ${authToken}` },
         });
   
@@ -40,7 +41,7 @@ const Dashboard = () => {
         console.log("Fetched userId:", userId);
   
         // Fetch trips for the user
-        const tripsResponse = await axios.get(`http://52.44.156.98:5000/api/trips/user/${userId}`, {
+        const tripsResponse = await axios.get(`${API_URL}/api/trips/user/${userId}`, {
           headers: { Authorization: `Bearer ${authToken}` },
         });
   
@@ -64,41 +65,64 @@ const Dashboard = () => {
   }, []);  
 
   if (loading) {
-    return <div className="loading-message">Loading your trips...</div>;
+    return (
+      <div className="min-h-screen bg-paper">
+        <Navbar />
+        <p role="status" className="py-24 text-ink-soft">Loading your trips...</p>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="error-message">{error}</div>;
+    return (
+      <div className="min-h-screen bg-paper">
+        <Navbar />
+        <p role="alert" className="py-24 font-bold text-red-700">{error}</p>
+      </div>
+    );
   }
 
+  const formatDate = (date) => (date ? new Date(date).toLocaleDateString() : "TBD");
+
   return (
-    <div className="dashboard-container">
+    <div className="min-h-screen bg-paper text-left">
       <Navbar />
 
-      <div className="trips-header">
-        <h2 className="trips-title">Your Trips</h2>
-        <button className="add-trip-btn" onClick={() => navigate("/create-trip")}>
-          Add Trip
-        </button>
-      </div>
+      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h1 className="font-display text-4xl text-ink sm:text-5xl">Your trips</h1>
+          <button className="btn-primary" onClick={() => navigate("/create-trip")}>
+            <Plus size={18} aria-hidden="true" />
+            Add trip
+          </button>
+        </div>
 
-      <div className="trips-container">
         {trips.length > 0 ? (
-          trips.map((trip) => (
-            <Card
-              key={trip._id}
-              title={trip.name}
-              content={`${trip.startDate ? new Date(trip.startDate).toLocaleDateString() : "TBD"} - ${
-                trip.endDate ? new Date(trip.endDate).toLocaleDateString() : "TBD"
-              }`}
-              imageUrl={trip.imageUrl || "/path/to/default-image.jpg"} // Use a default image if none exists
-              onClick={() => navigate(`/trip/${trip._id}`)}
-            />
-          ))
+          <div className="mt-10 grid gap-8 xl:grid-cols-2">
+            {trips.map((trip) => (
+              <Card
+                key={trip._id}
+                title={trip.name}
+                start={formatDate(trip.startDate)}
+                end={formatDate(trip.endDate)}
+                imageUrl={trip.imageUrl}
+                onClick={() => navigate(`/trip/${trip._id}`)}
+              />
+            ))}
+          </div>
         ) : (
-          <p className="no-trips-message">You have no trips yet. Create a new trip to get started!</p>
+          <div className="mt-10 flex flex-col items-start rounded-3xl bg-lagoon-light p-8 sm:p-12">
+            <Plane size={32} className="text-ink" aria-hidden="true" />
+            <h2 className="mt-4 font-display text-3xl text-ink">No trips yet</h2>
+            <p className="mt-2 max-w-sm text-ink-soft">
+              Create a trip, then invite the people you want to travel with.
+            </p>
+            <button className="btn-primary mt-6" onClick={() => navigate("/create-trip")}>
+              Create your first trip
+            </button>
+          </div>
         )}
-      </div>
+      </main>
     </div>
   );
 };

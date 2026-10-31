@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import Navbar from "../../components/Navbar/Navbar";
 import "./ResetPassword.css";
+import { API_URL } from "../../config";
 
 const ResetPassword = () => {
     const navigate = useNavigate();
@@ -30,7 +31,7 @@ const ResetPassword = () => {
         }
     
         try {
-            const response = await axios.post("http://52.44.156.98:5000/api/users/reset-password", {
+            const response = await axios.post(`${API_URL}/api/users/reset-password`, {
                 email,
                 token,
                 newPassword,

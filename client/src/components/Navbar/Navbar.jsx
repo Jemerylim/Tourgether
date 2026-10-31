@@ -1,57 +1,80 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import "./Navbar.css";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import { LogOut, Map, User } from "lucide-react";
 import logo from "../../assets/Tourgether-Logo.png";
 
-const Navbar = () => {
-    const navigate = useNavigate();
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
+const navLinkClass = ({ isActive }) =>
+  ["btn-ghost", isActive ? "bg-ink/5" : ""].join(" ");
 
-    useEffect(() => {
-        // Check if the user is logged in by checking the presence of authToken in localStorage
-        const token = localStorage.getItem('authToken');
-        setIsLoggedIn(!!token); // Set to true if token exists
-    }, []);
+// `overlay` lets the navbar sit transparently on a Scene until the page scrolls.
+const Navbar = ({ overlay = false }) => {
+  const navigate = useNavigate();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
-    const handleLogout = () => {
-        // Remove the token from localStorage to log out the user
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('userEmail'); // Optional: Clear other user-related data
-        setIsLoggedIn(false);
-        navigate('/');
-    };
+  useEffect(() => {
+    // Logged in when an authToken is present in localStorage
+    setIsLoggedIn(!!localStorage.getItem("authToken"));
+  }, []);
 
-    return (
-        <nav className="navbar">
-            <div className="navbar-logo">
-                <h1>
-                {isLoggedIn ? (
-                    <>
-                    <img onClick={() => navigate('/dashboard')} src={logo} alt="Logo" className="logo" />
-                    </>
-                ) : (
-                    <>
-                    <img onClick={() => navigate('/')} src={logo} alt="Logo" className="logo" />
-                    </>
-                    )}
-                </h1>
-            </div>
-            <div className="navbar-buttons">
-                {isLoggedIn ? (
-                    <>
-                        <button onClick={() => navigate('/my-trips')} className="btn profile">My Trips</button>
-                        <button onClick={() => navigate('/profile')} className="btn profile">Profile</button>
-                        <button onClick={handleLogout} className="btn logout">Sign Out</button>
-                    </>
-                ) : (
-                    <>
-                        <button onClick={() => navigate('/login')} className="btn login">Login</button>
-                        <button onClick={() => navigate('/register')} className="btn signup">Sign Up</button>
-                    </>
-                )}
-            </div>
-        </nav>
-    );
+  useEffect(() => {
+    if (!overlay) return undefined;
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [overlay]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("userEmail");
+    setIsLoggedIn(false);
+    navigate("/");
+  };
+
+  const solid = !overlay || scrolled;
+
+  return (
+    <header
+      className={`fixed inset-x-0 top-0 z-[1000] h-[76px] transition-colors duration-300 ${
+        solid ? "bg-paper/90 shadow-float backdrop-blur-md" : "bg-transparent"
+      }`}
+    >
+      <nav className="flex h-full items-center justify-between px-4 sm:px-8" aria-label="Main">
+        <Link to={isLoggedIn ? "/dashboard" : "/"} aria-label="Tourgether home" className="shrink-0">
+          <img src={logo} alt="Tourgether" className="-my-3 h-[72px] w-auto object-contain" />
+        </Link>
+
+        <div className="flex items-center gap-1 sm:gap-2">
+          {isLoggedIn ? (
+            <>
+              <NavLink to="/my-trips" className={navLinkClass}>
+                <Map size={16} aria-hidden="true" />
+                <span className="hidden sm:inline">My trips</span>
+              </NavLink>
+              <NavLink to="/profile" className={navLinkClass}>
+                <User size={16} aria-hidden="true" />
+                <span className="hidden sm:inline">Profile</span>
+              </NavLink>
+              <button onClick={handleLogout} className="btn-dark ml-1">
+                <LogOut size={16} aria-hidden="true" />
+                <span className="hidden sm:inline">Sign out</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="btn-ghost">
+                Log in
+              </Link>
+              <Link to="/register" className="btn-primary">
+                Sign up
+              </Link>
+            </>
+          )}
+        </div>
+      </nav>
+    </header>
+  );
 };
 
 export default Navbar;

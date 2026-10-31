@@ -4,6 +4,7 @@ import axios from "axios";
 import Navbar from "../../components/Navbar/Navbar";
 import Card from "../../components/Cards/Card"; // Assuming the Card component is created
 import "./MyTrips.css";
+import { API_URL } from "../../config";
 
 const MyTrips = () => {
   const [trips, setTrips] = useState([]);
@@ -22,7 +23,7 @@ const MyTrips = () => {
 
       try {
         // Fetch user profile to get userId
-        const userResponse = await axios.get("http://52.44.156.98:5000/api/users/profile", {
+        const userResponse = await axios.get(`${API_URL}/api/users/profile`, {
           headers: {
             Authorization: `Bearer ${authToken}`,
           },
@@ -30,7 +31,7 @@ const MyTrips = () => {
         const userId = userResponse.data.user._id || userResponse.data.user.id;
 
         // Fetch trips for the user
-        const tripsResponse = await axios.get(`http://52.44.156.98:5000/api/trips/user/${userId}`, {
+        const tripsResponse = await axios.get(`${API_URL}/api/trips/user/${userId}`, {
           headers: {
             Authorization: `Bearer ${authToken}`,
           },

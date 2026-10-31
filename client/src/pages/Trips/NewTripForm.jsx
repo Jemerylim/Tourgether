@@ -3,6 +3,7 @@ import axios from "axios";
 import Navbar from "../../components/Navbar/Navbar";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import "./NewTripForm.css";
+import { API_URL } from "../../config";
 
 const CreateTrip = () => {
     const navigate = useNavigate();
@@ -17,7 +18,7 @@ const CreateTrip = () => {
   // Function to validate email using the API
   const validateEmail = async (email) => {
     try {
-      const response = await axios.get(`http://52.44.156.98:5000/api/users/check-email`, {
+      const response = await axios.get(`${API_URL}/api/users/check-email`, {
         params: { email },
       });
       return response.data.registered; // Assuming the API returns { registered: true/false }
@@ -110,7 +111,7 @@ const CreateTrip = () => {
     try {
       // Map emails to user IDs
       const response = await axios.post(
-        "http://52.44.156.98:5000/api/users/get-ids-by-emails",
+        `${API_URL}/api/users/get-ids-by-emails`,
         {
           emails: groupEmails,
         },
@@ -133,7 +134,7 @@ const CreateTrip = () => {
   
       // Call to create trip
       const tripResponse = await axios.post(
-        `http://52.44.156.98:5000/api/trips/create-trip`,
+        `${API_URL}/api/trips/create-trip`,
         tripDetails,
         {
           headers: {

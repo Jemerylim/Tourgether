@@ -6,6 +6,7 @@ import axios from "axios";
 import Navbar from "../../components/Navbar/Navbar";
 import dayjs from "dayjs";
 import "./AllEvents.css";
+import { API_URL } from "../../config";
 
 const AllEvents = () => {
   const { id } = useParams();
@@ -26,7 +27,7 @@ const AllEvents = () => {
       try {
         // Fetch trip details
         const tripResponse = await axios.get(
-          `http://52.44.156.98:5000/api/trips/${id}`,
+          `${API_URL}/api/trips/${id}`,
           {
             headers: { Authorization: `Bearer ${authToken}` },
           }
@@ -35,7 +36,7 @@ const AllEvents = () => {
 
         // Fetch events associated with the trip
         const eventsResponse = await axios.get(
-          `http://52.44.156.98:5000/api/events/trip/${id}`,
+          `${API_URL}/api/events/trip/${id}`,
           {
             headers: { Authorization: `Bearer ${authToken}` },
           }
@@ -92,7 +93,7 @@ const AllEvents = () => {
     const authToken = localStorage.getItem("authToken");
     try {
       await axios.put(
-        `http://52.44.156.98:5000/api/events/${eventId}`,
+        `${API_URL}/api/events/${eventId}`,
         { notes: notesState[eventId] || "" },
         { headers: { Authorization: `Bearer ${authToken}` } }
       );

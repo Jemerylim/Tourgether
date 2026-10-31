@@ -14,6 +14,7 @@ import { createEventModalPlugin } from '@schedule-x/event-modal'
 import "@schedule-x/theme-default/dist/index.css";
 import "./Trip.css";
 import dayjs from "dayjs";
+import { API_URL } from "../../config";
 
 // Plugins
 const calendarControlsPlugin = createCalendarControlsPlugin({
@@ -113,10 +114,10 @@ const Trip = () => {
       try {
         // Use Promise.all to load both the trip and user profile at the same time
         const [tripResponse, userResponse] = await Promise.all([
-          axios.get(`http://52.44.156.98:5000/api/trips/${id}`, {
+          axios.get(`${API_URL}/api/trips/${id}`, {
             headers: { Authorization: `Bearer ${authToken}` },
           }),
-          axios.get("http://52.44.156.98:5000/api/users/profile", {
+          axios.get(`${API_URL}/api/users/profile`, {
             headers: { Authorization: `Bearer ${authToken}` },
           }),
         ]);
@@ -154,7 +155,7 @@ const Trip = () => {
 
         // Fetch events associated with the trip
         const eventsResponse = await axios.get(
-          `http://52.44.156.98:5000/api/events/trip/${id}`,
+          `${API_URL}/api/events/trip/${id}`,
           {
             headers: { Authorization: `Bearer ${authToken}` },
           }
@@ -208,7 +209,7 @@ const Trip = () => {
     try {
         if (isEditing && editingEvent) {
             await axios.put(
-                `http://52.44.156.98:5000/api/events/${editingEvent.id}`,
+                `${API_URL}/api/events/${editingEvent.id}`,
                 {
                     title: newEvent.title,
                     date: newEvent.date,
@@ -232,7 +233,7 @@ const Trip = () => {
             );
         } else {
             const response = await axios.post(
-                "http://52.44.156.98:5000/api/events",
+                `${API_URL}/api/events`,
                 {
                     tripId: trip._id,
                     title: newEvent.title,
@@ -275,7 +276,7 @@ const Trip = () => {
     const authToken = localStorage.getItem("authToken");
 
     try {
-        await axios.delete(`http://52.44.156.98:5000/api/events/${editingEvent.id}`, {
+        await axios.delete(`${API_URL}/api/events/${editingEvent.id}`, {
             headers: { Authorization: `Bearer ${authToken}` },
         });
 
@@ -299,7 +300,7 @@ const Trip = () => {
     const authToken = localStorage.getItem("authToken");
     try {
       await axios.post(
-        `http://52.44.156.98:5000/api/trips/${id}/invite`,
+        `${API_URL}/api/trips/${id}/invite`,
         { email },
         { headers: { Authorization: `Bearer ${authToken}` } }
       );
@@ -313,7 +314,7 @@ const Trip = () => {
     const authToken = localStorage.getItem("authToken");
     try {
       await axios.delete(
-        `http://52.44.156.98:5000/api/trips/${id}/remove-member/${memberId}`,
+        `${API_URL}/api/trips/${id}/remove-member/${memberId}`,
         { headers: { Authorization: `Bearer ${authToken}` } }
       );
       setMembers((prev) => prev.filter((member) => member._id !== memberId));
