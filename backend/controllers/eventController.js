@@ -1,5 +1,6 @@
 const Event = require('../models/Event');
 const Trip = require('../models/Trip');
+const { loadTripForMember } = require('../utils/tripAccess');
 
 // Create a new event
 exports.createEvent = async (req, res) => {
@@ -64,7 +65,9 @@ exports.getEventsByTrip = async (req, res) => {
   const { tripId } = req.params;
 
   try {
-    const events = await Event.find({ trip: tripId });
+    const trip = await loadTripForMember(req, res, tripId);
+    if (!trip) return;
+    const events = await Event.find({ trip: trip._id });
 
     res.status(200).json({
       success: true,

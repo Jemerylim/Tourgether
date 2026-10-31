@@ -2,7 +2,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const crypto = require("crypto");
-const nodemailer = require("nodemailer");
+const { config } = require('../config/env');
+const { sendMail, clientLink } = require('../utils/mailer');
 
 // Function to handle user registration
 const registerUser = async (req, res) => {
@@ -62,12 +63,12 @@ const loginUser = async (req, res) => {
       }
 
     // Generate a JWT token for authentication
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign({ id: user._id }, config.jwtSecret, { expiresIn: '1h' });
 
     // Set the token as an HttpOnly cookie
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // Use HTTPS in production
+      secure: config.isProduction, // Use HTTPS in production
       sameSite: 'strict', // Prevent CSRF
       maxAge: 3600000, // 1 hour
     });
@@ -224,20 +225,9 @@ const requestPasswordReset = async (req, res) => {
     await user.save();
 
     // Create password reset link
-    const resetURL = `http://52.44.156.98:5173/reset-password?token=${resetToken}&email=${email}`;
+    const resetURL = clientLink('/reset-password', { token: resetToken, email });
 
-    // Email transporter setup (Using Gmail SMTP)
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    // Email Options
     const mailOptions = {
-      from: process.env.EMAIL_USER,
       to: user.email,
       subject: "Password Reset Request",
       html: `
@@ -254,7 +244,7 @@ const requestPasswordReset = async (req, res) => {
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    await sendMail(mailOptions);
 
     res.json({ message: "A password reset link has been sent to your email." });
   } catch (error) {

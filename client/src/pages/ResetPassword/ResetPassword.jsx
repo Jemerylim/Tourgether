@@ -42,7 +42,7 @@ const ResetPassword = () => {
             setError(""); // Clear any previous errors
     
             // Redirect to login after 3 seconds
-            setTimeout(() => navigate("/login"), 3000);
+            setTimeout(() => navigate("/login", { replace: true }), 3000);
         } catch (error) {
             // Display error from backend response
             if (error.response?.data?.errors) {

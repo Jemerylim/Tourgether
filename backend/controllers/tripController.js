@@ -1,20 +1,18 @@
-const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 const Trip = require('../models/Trip');
 const User = require('../models/User');
 const Poll = require('../models/Poll');
 const Event = require('../models/Event');
 const UserTripDate = require('../models/UserTripDate');
+const Expense = require('../models/Expense');
+const ChecklistItem = require('../models/ChecklistItem');
 const mongoose = require('mongoose');
-// const asyncHandler = require("express-async-handler");
+const { sendMail, clientLink } = require('../utils/mailer');
 
-// For sending email
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+// Who a trip's members and organiser show up as
+const PEOPLE = 'name email profilePicture';
+
+const invitationLink = (tripId, userId) => clientLink(`/trip/${tripId}/accept`, { userId });
 
 // Create a new trip
 exports.createTrip = async (req, res) => {
@@ -40,9 +38,10 @@ exports.createTrip = async (req, res) => {
       status: 'pending',
     }));
 
+    // Invitees become members when they accept
     const trip = await Trip.create({
       name,
-      members,
+      members: [],
       sentInvitations,
       createdBy,
       description,
@@ -51,19 +50,17 @@ exports.createTrip = async (req, res) => {
     });
 
     const emailPromises = validMembers.map((member) => {
-      const invitationLink = `http://52.44.156.98/trip/${trip._id}/accept?userId=${member._id}`;
       const mailOptions = {
-        from: process.env.EMAIL_USER,
         to: member.email,
         subject: `Invitation to join the trip "${name}"`,
         html: `
           <p>Hi ${member.name},</p>
           <p>You have been invited to join the trip "<strong>${name}</strong>".</p>
-          <p>Visit your dashboard to see more details or <a href="${invitationLink}">accept the invitation here</a>.</p>
+          <p>Visit your dashboard to see more details or <a href="${invitationLink(trip._id, member._id)}">accept the invitation here</a>.</p>
           <p>Regards,<br>The Tourgether Team</p>
         `,
       };
-      return transporter.sendMail(mailOptions);
+      return sendMail(mailOptions);
     });
 
     // The trip already exists, so a failed email (for example missing mail credentials)
@@ -85,8 +82,8 @@ exports.createTrip = async (req, res) => {
 exports.getTrips = async (req, res) => {
   try {
     const trips = await Trip.find()
-      .populate('members', 'name email')
-      .populate('createdBy', 'name email');
+      .populate('members', PEOPLE)
+      .populate('createdBy', PEOPLE);
     res.status(200).json({ success: true, data: trips });
   } catch (error) {
     console.error('Error fetching trips:', error);
@@ -99,8 +96,8 @@ exports.getTrip = async (req, res) => {
   const { id } = req.params;
   try {
     const trip = await Trip.findById(id)
-      .populate('members', 'name email')
-      .populate('createdBy', 'name email');
+      .populate('members', PEOPLE)
+      .populate('createdBy', PEOPLE);
     if (!trip) {
       return res.status(404).json({ success: false, message: 'Trip not found' });
     }
@@ -120,7 +117,7 @@ exports.updateTrip = async (req, res) => {
       id,
       { name, members, description, startDate, endDate },
       { new: true, runValidators: true }
-    ).populate('members', 'name email').populate('createdBy', 'name email');
+    ).populate('members', PEOPLE).populate('createdBy', PEOPLE);
     if (!trip) {
       return res.status(404).json({ success: false, message: 'Trip not found' });
     }
@@ -143,11 +140,13 @@ exports.deleteTrip = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Only the trip organiser can delete this trip' });
     }
     await trip.deleteOne();
-    // Polls, events and availability only make sense inside their trip
+    // Everything planned inside the trip goes with it
     await Promise.all([
       Poll.deleteMany({ trip: trip._id }),
       Event.deleteMany({ trip: trip._id }),
       UserTripDate.deleteMany({ tripId: trip._id }),
+      Expense.deleteMany({ trip: trip._id }),
+      ChecklistItem.deleteMany({ trip: trip._id }),
     ]);
     res.status(200).json({ success: true, message: 'Trip deleted successfully' });
   } catch (error) {
@@ -156,35 +155,55 @@ exports.deleteTrip = async (req, res) => {
   }
 };
 
-// Get all trips for a specific user
-exports.getTripsByUser = async (req, res) => {
-  const { userId } = req.params;
-  if (!mongoose.Types.ObjectId.isValid(userId)) {
-    return res.status(400).json({ message: 'Invalid user ID format.' });
-  }
+// The signed-in user's trips, plus the invitations still waiting on their answer.
+// A pending or declined invitation keeps the trip off their list, even when an older
+// trip already lists them as a member.
+exports.getMyTrips = async (req, res) => {
+  const userId = req.user._id;
   try {
-    const trips = await Trip.find({
-      $or: [
-        { createdBy: userId },
-        { members: userId },
-        { sentInvitations: { $elemMatch: { userId, status: 'accepted' } } }
-      ],
+    const found = await Trip.find({
+      $or: [{ createdBy: userId }, { members: userId }, { 'sentInvitations.userId': userId }],
     })
-    .populate('members', 'name email')
-    .populate('createdBy', 'name email');
+      .populate('members', PEOPLE)
+      .populate('createdBy', PEOPLE);
 
-    res.status(200).json({ success: true, data: trips });
+    const trips = [];
+    const invitations = [];
+    found.forEach((trip) => {
+      const status = trip.sentInvitations.find((inv) => inv.userId.equals(userId))?.status;
+      const isMember = trip.members.some((member) => member?._id.equals(userId));
+      if (trip.createdBy?._id.equals(userId) || status === 'accepted' || (isMember && !status)) {
+        trips.push(trip);
+      } else if (status === 'pending') {
+        invitations.push({
+          _id: trip._id,
+          name: trip.name,
+          startDate: trip.startDate,
+          endDate: trip.endDate,
+          organiser: trip.createdBy?.name,
+          memberCount: trip.members.filter((member) => member && !member._id.equals(userId)).length + 1,
+        });
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        user: { _id: req.user._id, name: req.user.name, profilePicture: req.user.profilePicture },
+        trips,
+        invitations,
+      },
+    });
   } catch (error) {
     console.error('Error fetching user trips:', error);
     res.status(500).json({ success: false, message: 'Error fetching user trips', error: error.message });
   }
 };
 
-
 // Accept trip invitation
 exports.acceptInvitation = async (req, res) => {
   const { tripId } = req.params;
-  const { userId } = req.body;
+  const userId = req.user._id;
   try {
     const trip = await Trip.findById(tripId);
     if (!trip) return res.status(404).json({ message: 'Trip not found.' });
@@ -194,7 +213,7 @@ exports.acceptInvitation = async (req, res) => {
     if (invitation.status === 'accepted') return res.status(400).json({ message: 'Invitation already accepted.' });
 
     invitation.status = 'accepted';
-    trip.members.push(userId);
+    if (!trip.members.some((member) => member.equals(userId))) trip.members.push(userId);
     await trip.save();
 
     res.status(200).json({ success: true, data: trip });
@@ -207,7 +226,7 @@ exports.acceptInvitation = async (req, res) => {
 // Decline trip invitation
 exports.declineInvitation = async (req, res) => {
   const { tripId } = req.params;
-  const { userId } = req.body; // Ensure you are extracting from req.body
+  const userId = req.user._id;
 
   try {
     const trip = await Trip.findById(tripId);
@@ -221,6 +240,8 @@ exports.declineInvitation = async (req, res) => {
     }
 
     invitation.status = 'declined';
+    // Older trips added invitees as members straight away
+    trip.members = trip.members.filter((member) => !member.equals(userId));
     await trip.save();
 
     res.status(200).json({ success: true, message: 'Invitation declined.', data: trip });
@@ -272,20 +293,18 @@ exports.sendInviteToMember = async (req, res) => {
 
     trip.sentInvitations.push({ userId: user._id, status: 'pending' });
 
-    const invitationLink = `http://52.44.156.98/trip/${trip._id}/accept?userId=${user._id}`;
     const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: user.email,  // ✅ Corrected
+      to: user.email,
       subject: `Invitation to join the trip "${trip.name}"`,
       html: `
         <p>Hi ${user.name},</p>
         <p>You have been invited to join the trip "<strong>${trip.name}</strong>".</p>
-        <p>Visit your dashboard to see more details or <a href="${invitationLink}">accept the invitation here</a>.</p>
+        <p>Visit your dashboard to see more details or <a href="${invitationLink(trip._id, user._id)}">accept the invitation here</a>.</p>
         <p>Regards,<br>The Tourgether Team</p>
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    await sendMail(mailOptions);
     await trip.save();
 
     res.status(200).json({ message: 'Invitation sent successfully.' });
@@ -315,5 +334,141 @@ exports.removeMember = async (req, res) => {
   } catch (error) {
     console.error('Error removing member:', error);
     res.status(500).json({ message: 'Failed to remove member.' });
+  }
+};
+
+// ----- Shareable invite links -----
+
+const INVITE_LINK_DAYS = [1, 7, 30];
+
+const inviteLinkInfo = (trip) =>
+  trip.inviteToken ? { token: trip.inviteToken, expiresAt: trip.inviteExpiresAt } : null;
+
+const isLinkExpired = (trip) => Boolean(trip.inviteExpiresAt) && trip.inviteExpiresAt < new Date();
+
+// Load a trip with its invite token, for the organiser only. Sends the error response
+// itself and returns null when the request can't go on.
+const loadTripForOrganiser = async (req, res) => {
+  const trip = await Trip.findById(req.params.tripId).select('+inviteToken');
+  if (!trip) {
+    res.status(404).json({ success: false, message: 'Trip not found' });
+    return null;
+  }
+  if (!trip.createdBy.equals(req.user._id)) {
+    res.status(403).json({ success: false, message: 'Only the trip organiser can manage the invite link' });
+    return null;
+  }
+  return trip;
+};
+
+// Get the current invite link (null when there isn't one)
+exports.getInviteLink = async (req, res) => {
+  try {
+    const trip = await loadTripForOrganiser(req, res);
+    if (!trip) return;
+    res.status(200).json({ success: true, data: inviteLinkInfo(trip) });
+  } catch (error) {
+    console.error('Error fetching invite link:', error);
+    res.status(500).json({ success: false, message: 'Error fetching invite link', error: error.message });
+  }
+};
+
+// Create a new invite link, replacing (and so switching off) any old one.
+// `expiresInDays` is 1, 7 or 30; leave it out for a link that never expires.
+exports.createInviteLink = async (req, res) => {
+  const { expiresInDays = null } = req.body;
+  if (expiresInDays !== null && !INVITE_LINK_DAYS.includes(Number(expiresInDays))) {
+    return res.status(400).json({ success: false, message: 'Links can last 1, 7 or 30 days, or never expire' });
+  }
+
+  try {
+    const trip = await loadTripForOrganiser(req, res);
+    if (!trip) return;
+
+    trip.inviteToken = crypto.randomBytes(18).toString('base64url');
+    trip.inviteExpiresAt = expiresInDays === null ? null : new Date(Date.now() + Number(expiresInDays) * 24 * 60 * 60 * 1000);
+    await trip.save();
+
+    res.status(201).json({ success: true, data: inviteLinkInfo(trip) });
+  } catch (error) {
+    console.error('Error creating invite link:', error);
+    res.status(500).json({ success: false, message: 'Error creating invite link', error: error.message });
+  }
+};
+
+// Switch the invite link off
+exports.disableInviteLink = async (req, res) => {
+  try {
+    const trip = await loadTripForOrganiser(req, res);
+    if (!trip) return;
+
+    trip.inviteToken = undefined;
+    trip.inviteExpiresAt = null;
+    await trip.save();
+
+    res.status(200).json({ success: true, data: null });
+  } catch (error) {
+    console.error('Error disabling invite link:', error);
+    res.status(500).json({ success: false, message: 'Error disabling invite link', error: error.message });
+  }
+};
+
+// Find the trip behind an invite token. Sends the error response itself and returns null
+// when the link is unknown or expired.
+const loadTripByInvite = async (req, res) => {
+  const trip = await Trip.findOne({ inviteToken: req.params.token }).populate('createdBy', 'name');
+  if (!trip) {
+    res.status(404).json({ success: false, message: 'This invite link is not valid. It may have been reset or switched off.' });
+    return null;
+  }
+  if (isLinkExpired(trip)) {
+    res.status(410).json({ success: false, message: 'This invite link has expired. Ask the organiser for a new one.' });
+    return null;
+  }
+  return trip;
+};
+
+// What the link leads to, shown before joining. Public, so it only reveals the basics.
+exports.previewInviteLink = async (req, res) => {
+  try {
+    const trip = await loadTripByInvite(req, res);
+    if (!trip) return;
+    res.status(200).json({
+      success: true,
+      data: {
+        tripId: trip._id,
+        name: trip.name,
+        startDate: trip.startDate,
+        endDate: trip.endDate,
+        organiser: trip.createdBy?.name,
+        memberCount: trip.members.filter((member) => !member.equals(trip.createdBy._id)).length + 1,
+      },
+    });
+  } catch (error) {
+    console.error('Error reading invite link:', error);
+    res.status(500).json({ success: false, message: 'Error reading invite link', error: error.message });
+  }
+};
+
+// Join the trip behind an invite link as the signed-in user
+exports.joinWithInviteLink = async (req, res) => {
+  try {
+    const trip = await loadTripByInvite(req, res);
+    if (!trip) return;
+
+    const userId = req.user._id;
+    const alreadyMember = trip.createdBy._id.equals(userId) || trip.members.some((member) => member.equals(userId));
+    if (!alreadyMember) {
+      trip.members.push(userId);
+      // An emailed invite to the same person counts as accepted too
+      const invitation = trip.sentInvitations.find((inv) => inv.userId.equals(userId));
+      if (invitation) invitation.status = 'accepted';
+      await trip.save();
+    }
+
+    res.status(200).json({ success: true, data: { tripId: trip._id, alreadyMember } });
+  } catch (error) {
+    console.error('Error joining with invite link:', error);
+    res.status(500).json({ success: false, message: 'Error joining the trip', error: error.message });
   }
 };

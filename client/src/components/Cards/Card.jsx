@@ -10,9 +10,10 @@ const Field = ({ label, value }) => (
 );
 
 // A trip rendered as a boarding pass; the whole ticket opens the trip. With `onDelete`, a
-// delete button sits over the corner. It's a sibling of the ticket, since a button can't
+// delete button sits over the corner. `children` adds more detail under the dates; keep
+// it non-interactive, since it sits inside the ticket's button. It's a sibling of the ticket, since a button can't
 // nest inside the ticket's own button.
-const Card = ({ title, start, end, imageUrl, badge, muted = false, onClick, onDelete }) => {
+const Card = ({ title, start, end, imageUrl, badge, muted = false, onClick, onDelete, children }) => {
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = imageUrl && !imageFailed;
 
@@ -30,6 +31,7 @@ const Card = ({ title, start, end, imageUrl, badge, muted = false, onClick, onDe
             <Field label="Departs" value={start} />
             <Field label="Returns" value={end} />
           </dl>
+          {children}
         </>
       }
       stubClassName="h-28 overflow-hidden bg-lagoon-light sm:h-auto"

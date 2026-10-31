@@ -9,13 +9,10 @@ const navLinkClass = ({ isActive }) =>
 // `overlay` lets the navbar sit transparently on a Scene until the page scrolls.
 const Navbar = ({ overlay = false }) => {
   const navigate = useNavigate();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // Logged in when an authToken is present in localStorage. Read it up front so the first
+  // paint doesn't flash the signed-out links.
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem("authToken"));
   const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    // Logged in when an authToken is present in localStorage
-    setIsLoggedIn(!!localStorage.getItem("authToken"));
-  }, []);
 
   useEffect(() => {
     if (!overlay) return undefined;
@@ -29,7 +26,7 @@ const Navbar = ({ overlay = false }) => {
     localStorage.removeItem("authToken");
     localStorage.removeItem("userEmail");
     setIsLoggedIn(false);
-    navigate("/");
+    navigate("/", { replace: true });
   };
 
   const solid = !overlay || scrolled;

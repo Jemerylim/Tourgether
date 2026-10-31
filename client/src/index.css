@@ -111,7 +111,9 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-flip,
-  .animate-toast-in {
+  .animate-toast-in,
+  .animate-fade-in,
+  .animate-drawer-in {
     animation: none;
   }
 }

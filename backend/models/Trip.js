@@ -27,6 +27,23 @@ const tripSchema = new mongoose.Schema({
     type: String,
     maxlength: 500,
   },
+  // Currency everyone settles up in. null = settle each currency separately.
+  baseCurrency: {
+    type: String,
+    uppercase: true,
+    default: null,
+  },
+  // Exchange rates for the trip: 1 `from` = `rate` `to`. Expenses in `from` are converted
+  // with the rate whose `to` is the base currency, so switching the base currency back
+  // and forth never loses a rate.
+  rates: [
+    {
+      _id: false,
+      from: { type: String, uppercase: true, required: true },
+      to: { type: String, uppercase: true, required: true },
+      rate: { type: Number, required: true, min: 0 },
+    },
+  ],
   startDate: {
     type: Date,
     required: false,
@@ -34,6 +51,17 @@ const tripSchema = new mongoose.Schema({
   endDate: {
     type: Date,
     required: false,
+  },
+  // Shareable invite link. Anyone signed in with the token can join, so it's never
+  // returned by normal trip queries; only the organiser reads it (with .select()).
+  inviteToken: {
+    type: String,
+    select: false,
+    index: { unique: true, sparse: true },
+  },
+  inviteExpiresAt: {
+    type: Date,
+    default: null,
   },
   createdAt: {
     type: Date,

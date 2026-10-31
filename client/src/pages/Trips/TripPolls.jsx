@@ -7,7 +7,7 @@ import Modal from "../../components/Modal/Modal";
 import ConfirmDialog from "../../components/Modal/ConfirmDialog";
 import TimePicker from "../../components/TimePicker/TimePicker";
 import { useToast } from "../../components/Toast/Toast";
-import { API_URL } from "../../config";
+import { API_URL, assetUrl } from "../../config";
 import { apiErrorMessage } from "../../lib/apiError";
 import { cn } from "../../lib/utils";
 
@@ -16,7 +16,7 @@ const emptyDraft = { question: "", options: ["", ""], allowMultiple: false, date
 
 const authHeaders = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` } });
 
-const photoOf = (user) => (user.profilePicture ? `${API_URL}/${user.profilePicture}` : undefined);
+const photoOf = (user) => assetUrl(user.profilePicture);
 
 const slotLabel = ({ date, startTime, endTime }) =>
   date ? `${dayjs(date).format("ddd D MMM")}${startTime ? `, ${startTime}–${endTime}` : ""}` : null;
@@ -332,10 +332,10 @@ const TripPolls = ({ trip, userId, isOrganiser, onEventCreated }) => {
     : false;
 
   return (
-    <section className="mt-10" aria-labelledby="polls-heading">
+    <section aria-labelledby="polls-heading">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 id="polls-heading" className="font-display text-3xl text-ink">Polls</h2>
+          <h2 id="polls-heading" className="sr-only">Polls</h2>
           <p className="text-ink-soft">Can't decide? Put it to a vote. The winner can go straight onto the calendar.</p>
         </div>
         <button type="button" className="btn-primary" onClick={() => setCreating(true)}>

@@ -31,6 +31,14 @@ export default {
           "0%": { opacity: "0", transform: "translateY(12px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        "fade-in": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        "drawer-in": {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(0)" },
+        },
         flip: {
           "0%": { transform: "rotateX(-90deg)", opacity: "0" },
           "100%": { transform: "rotateX(0deg)", opacity: "1" },
@@ -39,6 +47,8 @@ export default {
       animation: {
         flip: "flip 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both",
         "toast-in": "toast-in 0.2s ease-out both",
+        "fade-in": "fade-in 0.2s ease-out both",
+        "drawer-in": "drawer-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both",
       },
     },
   },
