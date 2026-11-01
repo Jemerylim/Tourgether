@@ -11,6 +11,7 @@ const {
   checkInvitationStatus,
   sendInviteToMember,
   removeMember,
+  setMemberRole,
   getInviteLink,
   createInviteLink,
   disableInviteLink,
@@ -61,5 +62,8 @@ router.post('/:tripId/invite', protect, sendInviteToMember);
 
 // Remove member from trip
 router.delete('/:tripId/remove-member/:memberId', protect, removeMember);
+
+// Change a member's role (organiser only)
+router.put('/:tripId/members/:memberId/role', protect, setMemberRole);
 
 module.exports = router;

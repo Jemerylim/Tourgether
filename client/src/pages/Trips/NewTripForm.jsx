@@ -23,7 +23,9 @@ const CreateTrip = () => {
   const [inviteNames, setInviteNames] = useState({}); // email -> name, for the chips
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const pickThroughVote = false; // Date voting isn't built yet; kept so the payload stays the same.
+  // Leave the dates open: the group marks the days they're free and the organiser locks
+  // the best ones from the trip's "Find dates" section.
+  const [pickLater, setPickLater] = useState(false);
 
   // Look up an invited person by email or by name. Returns a message to reject them (not
   // registered, ambiguous name, yourself) or `{ email }` with their real email address.
@@ -54,7 +56,7 @@ const CreateTrip = () => {
       setError("Give your trip a name.");
       return;
     }
-    if (!pickThroughVote) {
+    if (!pickLater) {
       if (!startDate) {
         setError("Pick the day you leave.");
         return;
@@ -102,8 +104,8 @@ const CreateTrip = () => {
         name: groupName,
         members: userIds,
         description: "",
-        startDate: pickThroughVote ? "" : startDate,
-        endDate: pickThroughVote ? "" : endDate,
+        startDate: pickLater ? undefined : startDate,
+        endDate: pickLater ? undefined : endDate,
       };
 
       const tripResponse = await axios.post(`${API_URL}/api/trips/create-trip`, tripDetails, {
@@ -129,7 +131,11 @@ const CreateTrip = () => {
     { label: "Trip", value: groupName.trim() || "Not named yet" },
     {
       label: "Dates",
-      value: startDate && endDate ? `${formatShort(startDate)} to ${formatShort(endDate)}` : "Not picked yet",
+      value: pickLater
+        ? "To be decided"
+        : startDate && endDate
+          ? `${formatShort(startDate)} to ${formatShort(endDate)}`
+          : "Not picked yet",
     },
     {
       label: "Travellers",
@@ -144,7 +150,7 @@ const CreateTrip = () => {
     <PageLayout
       back={location.state?.from || { to: "/my-trips", label: "My trips" }}
       title="Create a new trip"
-      subtitle="Name it, pick the dates and invite the people coming along."
+      subtitle="Name it, pick the dates (or decide them later) and invite the people coming along."
     >
 
         <Ticket
@@ -174,16 +180,37 @@ const CreateTrip = () => {
               </div>
 
               <div>
-                <p className="field-label">Dates</p>
-                <DateRangePicker
-                  start={startDate}
-                  end={endDate}
-                  onChange={(start, end) => {
-                    setStartDate(start);
-                    setEndDate(end);
-                    setError("");
-                  }}
-                />
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="field-label !mb-0">Dates</p>
+                  <label className="flex cursor-pointer items-center gap-2 text-sm font-bold text-ink">
+                    <input
+                      type="checkbox"
+                      checked={pickLater}
+                      onChange={(e) => {
+                        setPickLater(e.target.checked);
+                        setError("");
+                      }}
+                      className="h-4 w-4 accent-lagoon"
+                    />
+                    Pick dates later
+                  </label>
+                </div>
+                {pickLater ? (
+                  <p className="mt-2 rounded-2xl bg-lagoon-light px-4 py-5 text-ink-soft">
+                    No dates yet. Once everyone marks the days they're free, the trip's Find dates section shows the
+                    best stretch and you can lock it in.
+                  </p>
+                ) : (
+                  <DateRangePicker
+                    start={startDate}
+                    end={endDate}
+                    onChange={(start, end) => {
+                      setStartDate(start);
+                      setEndDate(end);
+                      setError("");
+                    }}
+                  />
+                )}
               </div>
 
               <EmailChipsInput

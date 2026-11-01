@@ -1,15 +1,16 @@
 const Event = require('../models/Event');
-const { loadTripForMember } = require('../utils/tripAccess');
+const { loadTripForMember, loadTripForEditor } = require('../utils/tripAccess');
 
-// Load an event and check the signed-in user is on its trip. Sends the error response
-// itself and returns null when the request can't go on.
-const loadEventForMember = async (req, res, id) => {
+// Load an event and check the signed-in user is on its trip (and, with `forEdit`, may
+// change it: viewers can't). Sends the error response itself and returns null when the
+// request can't go on.
+const loadEventForMember = async (req, res, id, { forEdit = false } = {}) => {
   const event = await Event.findById(id);
   if (!event) {
     res.status(404).json({ success: false, message: "Event not found" });
     return null;
   }
-  const trip = await loadTripForMember(req, res, event.trip);
+  const trip = await (forEdit ? loadTripForEditor : loadTripForMember)(req, res, event.trip);
   return trip ? event : null;
 };
 
@@ -32,8 +33,8 @@ exports.createEvent = async (req, res) => {
   }
 
   try {
-    // The trip must exist and the signed-in user must be on it
-    const trip = await loadTripForMember(req, res, tripId);
+    // The trip must exist and the signed-in user must be able to edit it
+    const trip = await loadTripForEditor(req, res, tripId);
     if (!trip) return;
 
     // Combine date with startTime and endTime
@@ -121,7 +122,7 @@ exports.updateEvent = async (req, res) => {
   const { title, description, date, startTime, endTime, notes } = req.body;
 
   try {
-    const found = await loadEventForMember(req, res, id);
+    const found = await loadEventForMember(req, res, id, { forEdit: true });
     if (!found) return;
 
     const event = await Event.findByIdAndUpdate(
@@ -149,7 +150,7 @@ exports.deleteEvent = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const event = await loadEventForMember(req, res, id);
+    const event = await loadEventForMember(req, res, id, { forEdit: true });
     if (!event) return;
     await event.deleteOne();
 

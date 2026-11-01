@@ -6,9 +6,10 @@ const Event = require('../models/Event');
 const UserTripDate = require('../models/UserTripDate');
 const Expense = require('../models/Expense');
 const ChecklistItem = require('../models/ChecklistItem');
+const Place = require('../models/Place');
 const mongoose = require('mongoose');
 const { sendMail, clientLink, escapeHtml } = require('../utils/mailer');
-const { loadTripForMember } = require('../utils/tripAccess');
+const { loadTripForMember, roleOf } = require('../utils/tripAccess');
 
 // Email subjects must stay on one line
 const oneLine = (text) => String(text).replace(/[\r\n]+/g, ' ');
@@ -101,11 +102,14 @@ exports.getTrip = async (req, res) => {
   try {
     const trip = await loadTripForMember(req, res, id);
     if (!trip) return;
+    // Worked out before populating, while createdBy and members are still plain IDs.
+    // It lets the client hide what the user can't do; the API still enforces it.
+    const myRole = roleOf(trip, req.user._id);
     await trip.populate([
       { path: 'members', select: PEOPLE },
       { path: 'createdBy', select: PEOPLE },
     ]);
-    res.status(200).json({ success: true, data: trip });
+    res.status(200).json({ success: true, data: { ...trip.toObject(), myRole } });
   } catch (error) {
     console.error('Error fetching trip:', error);
     res.status(500).json({ success: false, message: 'Error fetching trip', error: error.message });
@@ -129,6 +133,19 @@ exports.updateTrip = async (req, res) => {
     ['name', 'description', 'startDate', 'endDate'].forEach((field) => {
       if (req.body[field] !== undefined) updates[field] = req.body[field];
     });
+
+    // Locking dates from the heatmap sends both; the trip can't end before it starts
+    // (sending null for both unlocks them: the trip goes back to "dates to be decided")
+    if (updates.startDate !== undefined || updates.endDate !== undefined) {
+      const start = updates.startDate === undefined ? found.startDate : updates.startDate;
+      const end = updates.endDate === undefined ? found.endDate : updates.endDate;
+      if (Boolean(start) !== Boolean(end)) {
+        return res.status(400).json({ success: false, message: 'A trip needs both a start and an end date, or neither' });
+      }
+      if (start && new Date(start) > new Date(end)) {
+        return res.status(400).json({ success: false, message: 'The trip cannot end before it starts' });
+      }
+    }
 
     const trip = await Trip.findByIdAndUpdate(id, { $set: updates }, { new: true, runValidators: true })
       .populate('members', PEOPLE)
@@ -159,6 +176,7 @@ exports.deleteTrip = async (req, res) => {
       UserTripDate.deleteMany({ tripId: trip._id }),
       Expense.deleteMany({ trip: trip._id }),
       ChecklistItem.deleteMany({ trip: trip._id }),
+      Place.deleteMany({ trip: trip._id }),
     ]);
     res.status(200).json({ success: true, message: 'Trip deleted successfully' });
   } catch (error) {
@@ -339,6 +357,7 @@ exports.removeMember = async (req, res) => {
     }
 
     trip.members = trip.members.filter((member) => !member.equals(memberId));
+    trip.memberRoles = trip.memberRoles.filter((entry) => !entry.user.equals(memberId));
     trip.sentInvitations = trip.sentInvitations.filter((inv) => !inv.userId.equals(memberId));
 
     await trip.save();
@@ -346,6 +365,43 @@ exports.removeMember = async (req, res) => {
   } catch (error) {
     console.error('Error removing member:', error);
     res.status(500).json({ message: 'Failed to remove member.' });
+  }
+};
+
+// Make a member an editor or a viewer (organiser only). The organiser's own role is fixed.
+exports.setMemberRole = async (req, res) => {
+  const { tripId, memberId } = req.params;
+  const { role } = req.body;
+
+  if (!['editor', 'viewer'].includes(role)) {
+    return res.status(400).json({ success: false, message: 'Role must be "editor" or "viewer"' });
+  }
+  if (!mongoose.isValidObjectId(memberId)) {
+    return res.status(400).json({ success: false, message: 'That is not a valid member' });
+  }
+
+  try {
+    const trip = await Trip.findById(tripId);
+    if (!trip) return res.status(404).json({ success: false, message: 'Trip not found' });
+    if (!trip.createdBy.equals(req.user._id)) {
+      return res.status(403).json({ success: false, message: 'Only the trip organiser can change roles' });
+    }
+    if (trip.createdBy.equals(memberId)) {
+      return res.status(400).json({ success: false, message: "The organiser's role can't be changed" });
+    }
+    if (!trip.members.some((member) => member.equals(memberId))) {
+      return res.status(404).json({ success: false, message: 'That person is not a member of this trip' });
+    }
+
+    const entry = trip.memberRoles.find((item) => item.user.equals(memberId));
+    if (entry) entry.role = role;
+    else trip.memberRoles.push({ user: memberId, role });
+    await trip.save();
+
+    res.status(200).json({ success: true, data: { memberRoles: trip.memberRoles } });
+  } catch (error) {
+    console.error('Error changing role:', error);
+    res.status(500).json({ success: false, message: 'Failed to change role' });
   }
 };
 

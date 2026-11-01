@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { Suspense, lazy, useEffect, useState } from "react";
 import { useLocation, useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { Backpack, CalendarDays, CalendarPlus, ListChecks, Trash2, UserPlus, Users, Vote, Wallet, X } from "lucide-react";
+import { Backpack, CalendarDays, CalendarRange, CalendarPlus, ChevronLeft, ChevronRight, ListChecks, MapPin, Trash2, UserPlus, Users, Vote, Wallet, X } from "lucide-react";
 import axios from "axios";
 import Navbar from "../../components/Navbar/Navbar";
 import Avatar from "../../components/Avatar/Avatar";
@@ -13,12 +13,18 @@ import { useToast } from "../../components/Toast/Toast";
 import TimePicker from "../../components/TimePicker/TimePicker";
 import SectionSidebar from "../../components/SectionSidebar/SectionSidebar";
 import InviteLink from "./InviteLink";
+import TripDates from "./TripDates";
 import TripPolls from "./TripPolls";
 import TripExpenses from "./TripExpenses";
 import TripChecklist from "./TripChecklist";
 
+// The map library is large, so the Places section loads the first time it's opened
+const TripPlaces = lazy(() => import("./TripPlaces"));
+
 const SECTIONS = [
   { value: "calendar", label: "Calendar", icon: CalendarDays },
+  { value: "dates", label: "Find dates", icon: CalendarRange },
+  { value: "places", label: "Places", icon: MapPin },
   { value: "polls", label: "Polls", icon: Vote },
   { value: "expenses", label: "Expenses", icon: Wallet },
   { value: "lists", label: "Packing & to-dos", icon: Backpack },
@@ -26,6 +32,7 @@ const SECTIONS = [
 import { useCalendarApp, ScheduleXCalendar } from "@schedule-x/react";
 import {
   createViewDay,
+  createViewMonthGrid,
   createViewWeek,
 } from "@schedule-x/calendar";
 import { createDragAndDropPlugin } from "@schedule-x/drag-and-drop";
@@ -62,7 +69,12 @@ const dragAndDropPlugin = createDragAndDropPlugin({
           console.warn("Trip details not loaded yet.");
           return;
         }
-  
+        if (trip.myRole === "viewer") {
+          notifyRef.current("Viewers can't move events.", "error");
+          revert();
+          return;
+        }
+
         const tripStart = dayjs(trip.startDate).format("YYYY-MM-DD");
         const tripEnd = dayjs(trip.endDate).format("YYYY-MM-DD");
         const newStartDate = dayjs(start).format("YYYY-MM-DD");
@@ -120,11 +132,36 @@ const Trip = () => {
 
   // Calendar setup
   const calendar = useCalendarApp({
-    views: [createViewDay(), createViewWeek()],
+    views: [createViewDay(), createViewWeek(), createViewMonthGrid()],
     events: [], // Initially empty
     plugins: [dragAndDropPlugin, calendarControlsPlugin, eventsServicePlugin,eventModal],
     callbacks:{
+        // Double-click an empty slot to start a new event there: a one-hour event from the
+        // slot's time in the day and week views, or just the date in the month view
+        onDoubleClickDateTime: (dateTime) => {
+            const start = dayjs(dateTime);
+            const end = start.add(1, "hour");
+            setIsEditing(false);
+            setEditingEvent(null);
+            setErrorMessage("");
+            setNewEvent({
+                title: "",
+                date: start.format("YYYY-MM-DD"),
+                startTime: start.format("HH:mm"),
+                endTime: end.isSame(start, "day") ? end.format("HH:mm") : "23:59",
+            });
+            setShowCreateForm(true);
+        },
+        onDoubleClickDate: (date) => {
+            setIsEditing(false);
+            setEditingEvent(null);
+            setErrorMessage("");
+            setNewEvent({ title: "", date: dayjs(date).format("YYYY-MM-DD"), startTime: "", endTime: "" });
+            setShowCreateForm(true);
+        },
         onDoubleClickEvent: (event) => {
+            // Viewers can look at events but not edit them
+            if (tripRef.current?.myRole === "viewer") return;
             console.log("Editing Event:", event);
             setEditingEvent(event); // Set event to edit
             setNewEvent({
@@ -148,6 +185,14 @@ const Trip = () => {
       console.error("eventsServicePlugin is not available or not initialized properly.");
     }
   }, [selectedDates]);
+
+  // The calendar works out which views fit from its width, but it's measured while the
+  // section is hidden (zero wide, so only Day fits). Nudge it to measure again once shown.
+  useEffect(() => {
+    if (section !== "calendar") return undefined;
+    const frame = requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
+    return () => cancelAnimationFrame(frame);
+  }, [section, trip]);
 
   // Fetch trip, event details, and members
   useEffect(() => {
@@ -188,8 +233,9 @@ const Trip = () => {
         setUserId(fetchedUserId);
 
         // Set calendar restrictions based on trip dates
-        const tripStartDate = dayjs(fetchedTrip.startDate).format("YYYY-MM-DD");
-        const tripEndDate = dayjs(fetchedTrip.endDate).format("YYYY-MM-DD");
+        // (a trip whose dates are still to be decided has no restrictions)
+        const tripStartDate = fetchedTrip.startDate && dayjs(fetchedTrip.startDate).format("YYYY-MM-DD");
+        const tripEndDate = fetchedTrip.endDate && dayjs(fetchedTrip.endDate).format("YYYY-MM-DD");
 
         if (calendarControlsPlugin.$app && tripStartDate && tripEndDate) {
           calendarControlsPlugin.setDate(tripStartDate);
@@ -239,18 +285,21 @@ const Trip = () => {
         return;
     }
 
-    if (!trip || !trip.startDate || !trip.endDate) {
+    if (!trip) {
         setErrorMessage("Trip details are missing. Please try again.");
         return;
     }
 
-    const tripStart = dayjs(trip.startDate).format("YYYY-MM-DD");
-    const tripEnd = dayjs(trip.endDate).format("YYYY-MM-DD");
-    const selectedDate = dayjs(newEvent.date).format("YYYY-MM-DD");
+    // Events only have to fall inside the trip once its dates are locked in
+    if (trip.startDate && trip.endDate) {
+        const tripStart = dayjs(trip.startDate).format("YYYY-MM-DD");
+        const tripEnd = dayjs(trip.endDate).format("YYYY-MM-DD");
+        const selectedDate = dayjs(newEvent.date).format("YYYY-MM-DD");
 
-    if (selectedDate < tripStart || selectedDate > tripEnd) {
-        setErrorMessage(`Event date must be between ${tripStart} and ${tripEnd}`);
-        return;
+        if (selectedDate < tripStart || selectedDate > tripEnd) {
+            setErrorMessage(`Event date must be between ${tripStart} and ${tripEnd}`);
+            return;
+        }
     }
 
     try {
@@ -372,6 +421,27 @@ const Trip = () => {
   };
 
   const isOrganiser = trip?.createdBy?._id === userId;
+  const canEdit = trip?.myRole !== "viewer";
+
+  const roleOf = (member) =>
+    member._id === trip.createdBy._id
+      ? "owner"
+      : trip.memberRoles?.find((entry) => entry.user === member._id)?.role || "editor";
+
+  const handleChangeRole = async (member, role) => {
+    try {
+      const { data } = await axios.put(
+        `${API_URL}/api/trips/${id}/members/${member._id}/role`,
+        { role },
+        { headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` } }
+      );
+      setTrip((prev) => ({ ...prev, memberRoles: data.data.memberRoles }));
+      showToast(`${member.name} is now ${role === "viewer" ? "a viewer" : "an editor"}`, "success");
+    } catch (error) {
+      console.error("Error changing role:", error);
+      showToast(apiErrorMessage(error, "Couldn't change that role"), "error");
+    }
+  };
 
   const handleDeleteTrip = async () => {
     setConfirmingTripDelete(false);
@@ -385,6 +455,40 @@ const Trip = () => {
       console.error("Error deleting trip:", err);
       showToast(apiErrorMessage(err, "Couldn't delete this trip"), "error");
     }
+  };
+
+  // The organiser locked new dates: show them everywhere and re-fit the calendar to them
+  const handleDatesLocked = (updatedTrip) => {
+    // Keep myRole, which only the GET response carries
+    setTrip((prev) => ({ ...prev, ...updatedTrip }));
+    const locked = updatedTrip.startDate && updatedTrip.endDate;
+    const start = locked ? dayjs(updatedTrip.startDate).format("YYYY-MM-DD") : undefined;
+    const end = locked ? dayjs(updatedTrip.endDate).format("YYYY-MM-DD") : undefined;
+    if (calendarControlsPlugin.$app) {
+      // Unlocked dates lift the limits again
+      calendarControlsPlugin.setMinDate(start);
+      calendarControlsPlugin.setMaxDate(end);
+      if (start) {
+        calendarControlsPlugin.setDate(start);
+        calendarControlsPlugin.setFirstDayOfWeek(dayjs(start).day());
+      }
+    }
+  };
+
+  // Step the calendar by a day, week or month depending on the view, staying inside the
+  // trip's dates once they're locked
+  const moveCalendar = (direction) => {
+    const view = calendarControlsPlugin.getView();
+    const unit = view === "month-grid" ? "month" : view === "day" ? "day" : "week";
+    const goTo = direction === 0 ? dayjs() : dayjs(calendarControlsPlugin.getDate()).add(direction, unit);
+    let date = goTo.format("YYYY-MM-DD");
+    if (trip?.startDate && trip?.endDate) {
+      const first = dayjs(trip.startDate).format("YYYY-MM-DD");
+      const last = dayjs(trip.endDate).format("YYYY-MM-DD");
+      if (date < first) date = first;
+      if (date > last) date = last;
+    }
+    calendarControlsPlugin.setDate(date);
   };
 
   const closeEventForm = () => {
@@ -427,16 +531,22 @@ const Trip = () => {
 
   return (
     <PageLayout
-      maxWidth="max-w-7xl"
+      maxWidth="max-w-[90rem]"
       back={back}
       title={trip.name}
-      subtitle={`${formatDate(trip.startDate)} to ${formatDate(trip.endDate)}`}
+      subtitle={
+        trip.startDate && trip.endDate
+          ? `${formatDate(trip.startDate)} to ${formatDate(trip.endDate)}`
+          : "Dates to be decided. Use Find dates to pick them."
+      }
       actions={
         <>
-              <button className="btn-primary" onClick={openNewEventForm}>
-                <CalendarPlus size={18} aria-hidden="true" />
-                Add event
-              </button>
+              {canEdit && (
+                <button className="btn-primary" onClick={openNewEventForm}>
+                  <CalendarPlus size={18} aria-hidden="true" />
+                  Add event
+                </button>
+              )}
               <button className="btn-ghost" onClick={() => navigate(`/trip/${id}/events`, { state: fromHere(location, trip.name) })}>
                 <ListChecks size={18} aria-hidden="true" />
                 All events
@@ -468,12 +578,31 @@ const Trip = () => {
           )}
         </div>
 
-        {/* Sections: calendar, polls, money and lists */}
+        {/* Sections: calendar, places, polls, money and lists */}
         <SectionSidebar items={SECTIONS} value={section} onChange={showSection} label="Trip planner">
           {/* The calendar stays mounted while hidden so Schedule-X keeps its state */}
           <div className={cn("rounded-3xl bg-white p-3 drop-shadow-ticket sm:p-5", section !== "calendar" && "hidden")}>
+            <div className="mb-3 flex items-center gap-2">
+              <button type="button" aria-label="Previous" className="btn-ghost !px-2.5" onClick={() => moveCalendar(-1)}>
+                <ChevronLeft size={18} aria-hidden="true" />
+              </button>
+              <button type="button" className="btn-ghost" onClick={() => moveCalendar(0)}>
+                Today
+              </button>
+              <button type="button" aria-label="Next" className="btn-ghost !px-2.5" onClick={() => moveCalendar(1)}>
+                <ChevronRight size={18} aria-hidden="true" />
+              </button>
+            </div>
             <ScheduleXCalendar calendarApp={calendar} />
           </div>
+          {userId && section === "dates" && (
+            <TripDates trip={trip} userId={userId} isOrganiser={isOrganiser} onLocked={handleDatesLocked} />
+          )}
+          {userId && section === "places" && (
+            <Suspense fallback={<p className="text-ink-soft">Loading places...</p>}>
+              <TripPlaces trip={trip} userId={userId} isOrganiser={isOrganiser} />
+            </Suspense>
+          )}
           {userId && section === "polls" && (
             <TripPolls
               trip={trip}
@@ -516,8 +645,17 @@ const Trip = () => {
               </div>
               {member._id === trip.createdBy._id ? (
                 <span className="rounded-full bg-mustard px-2.5 py-1 text-xs font-extrabold text-ink">Organiser</span>
-              ) : (
-                isOrganiser && (
+              ) : isOrganiser ? (
+                <>
+                  <select
+                    aria-label={`Role for ${member.name}`}
+                    value={roleOf(member)}
+                    onChange={(e) => handleChangeRole(member, e.target.value)}
+                    className="rounded-full border-0 bg-lagoon-light px-3 py-1.5 text-sm font-extrabold text-ink"
+                  >
+                    <option value="editor">Editor</option>
+                    <option value="viewer">Viewer</option>
+                  </select>
                   <button
                     type="button"
                     aria-label={`Remove ${member.name}`}
@@ -526,7 +664,11 @@ const Trip = () => {
                   >
                     <X size={16} aria-hidden="true" />
                   </button>
-                )
+                </>
+              ) : (
+                <span className="rounded-full bg-lagoon-light px-2.5 py-1 text-xs font-extrabold capitalize text-ink">
+                  {roleOf(member)}
+                </span>
               )}
             </li>
           ))}

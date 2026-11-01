@@ -1,5 +1,9 @@
 const UserTripDate = require('../models/UserTripDate');
-const { loadTripForMember } = require('../utils/tripAccess');
+const User = require('../models/User');
+const { loadTripForMember, memberIds } = require('../utils/tripAccess');
+const { dayKey, dailyAvailability, bestRanges } = require('../utils/bestDates');
+
+const MAX_AVAIL_DAYS = 366;
 
 // People can only change their own availability. Sends the error response itself
 // and returns false when the request can't go on.
@@ -22,6 +26,32 @@ const getAllAvailabilities = async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Error fetching availabilities', error: err.message });
+    }
+};
+
+// How many members are free on each day, who they are, and the best runs of days.
+// Everyone on the trip can read it; it's what the dates heatmap is drawn from.
+const getAvailabilitySummary = async (req, res) => {
+    try {
+        const trip = await loadTripForMember(req, res, req.params.tripId);
+        if (!trip) return;
+
+        const ids = memberIds(trip);
+        const [users, records] = await Promise.all([
+            User.find({ _id: { $in: ids } }).select('name'),
+            UserTripDate.find({ tripId: trip._id }),
+        ]);
+        const people = new Map(users.map((user) => [String(user._id), { _id: String(user._id), name: user.name }]));
+
+        const days = dailyAvailability(records, people);
+        const responded = new Set(records.map((record) => String(record.userId)).filter((id) => people.has(id))).size;
+        res.status(200).json({
+            success: true,
+            data: { totalMembers: people.size, responded, days, bestRanges: bestRanges(days) },
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching availability summary', error: err.message });
     }
 };
 
@@ -57,13 +87,23 @@ const addOrUpdateAvailability = async (req, res) => {
 
     if (!isSelf(req, res)) return;
 
+    // One entry per calendar day, whatever time of day the client sent
+    const dates = availDates.map((value) => new Date(value));
+    if (dates.some((date) => Number.isNaN(date.getTime())) || availDates.length > MAX_AVAIL_DAYS * 2) {
+        return res.status(400).json({ message: 'availDates must be a list of valid dates.' });
+    }
+    const days = [...new Set(dates.map(dayKey))].sort();
+    if (days.length > MAX_AVAIL_DAYS) {
+        return res.status(400).json({ message: `You can mark at most ${MAX_AVAIL_DAYS} days.` });
+    }
+
     try {
         const trip = await loadTripForMember(req, res, tripId);
         if (!trip) return;
 
         const updatedAvailability = await UserTripDate.findOneAndUpdate(
             { tripId: trip._id, userId: req.user._id },
-            { availDates },
+            { availDates: days.map((key) => new Date(key)) },
             { new: true, upsert: true } // Create if doesn't exist
         ).populate('userId', 'name email');
 
@@ -95,6 +135,7 @@ const deleteAvailability= async (req, res) => {
 
 module.exports = {
     getAllAvailabilities,
+    getAvailabilitySummary,
     getUserAvailability,
     addOrUpdateAvailability,
     deleteAvailability

@@ -13,6 +13,7 @@ const eventRoutes = require('./routes/eventRoutes');
 const pollRoutes = require('./routes/pollRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
 const checklistRoutes = require('./routes/checklistRoutes');
+const placeRoutes = require('./routes/placeRoutes');
 
 const app = express();
 
@@ -54,6 +55,7 @@ app.use('/api/events', eventRoutes);
 app.use('/api/polls', pollRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/checklist', checklistRoutes);
+app.use('/api/places', placeRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/trips', tripRoutes);
 

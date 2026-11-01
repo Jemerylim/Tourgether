@@ -17,8 +17,9 @@ const parseKey = (key) => {
 };
 
 // Month grid for choosing a trip's start and end: first tap sets the start, the second
-// sets the end and fills the range between. `start`/`end` are "YYYY-MM-DD" ("" when unset).
-const DateRangePicker = ({ start, end, onChange, min = todayKey() }) => {
+// sets the end and fills the range between (tapping the same day twice picks a single day).
+// `start`/`end` are "YYYY-MM-DD" ("" when unset). `compact` is for narrow side panels.
+const DateRangePicker = ({ start, end, onChange, min = todayKey(), compact = false }) => {
   const initial = start ? parseKey(start) : new Date();
   const [view, setView] = useState({ year: initial.getFullYear(), month: initial.getMonth() });
 
@@ -47,7 +48,7 @@ const DateRangePicker = ({ start, end, onChange, min = todayKey() }) => {
   };
 
   return (
-    <div className="rounded-2xl bg-lagoon-light/70 p-4">
+    <div className={`rounded-2xl bg-lagoon-light/70 ${compact ? "p-2" : "p-4"}`}>
       <div className="mb-3 flex items-center justify-between">
         <button
           type="button"
@@ -57,7 +58,7 @@ const DateRangePicker = ({ start, end, onChange, min = todayKey() }) => {
         >
           <ChevronLeft size={18} aria-hidden="true" />
         </button>
-        <p className="font-display text-xl text-ink" aria-live="polite">
+        <p className={`font-display text-ink ${compact ? "text-lg" : "text-xl"}`} aria-live="polite">
           {monthLabel}
         </p>
         <button
@@ -101,7 +102,7 @@ const DateRangePicker = ({ start, end, onChange, min = todayKey() }) => {
                 onClick={() => select(key)}
                 aria-pressed={isStart || isEnd}
                 aria-label={date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
-                className={`h-10 w-10 rounded-full border-0 p-0 text-sm font-bold transition ${
+                className={`${compact ? "h-8 w-8" : "h-10 w-10"} rounded-full border-0 p-0 text-sm font-bold transition ${
                   isStart || isEnd
                     ? "bg-ink text-white"
                     : disabled

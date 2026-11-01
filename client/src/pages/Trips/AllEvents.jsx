@@ -123,6 +123,7 @@ const AllEvents = () => {
   };
 
   const days = Object.keys(events).sort();
+  const canEdit = trip?.myRole !== "viewer";
 
   let content;
   if (error) {
@@ -134,11 +135,13 @@ const AllEvents = () => {
       <EmptyState
         icon={CalendarDays}
         title="Nothing planned yet"
-        text="Add the first event on the trip calendar and it will show up here."
+        text={canEdit ? "Add the first event on the trip calendar and it will show up here." : "Events added to the trip calendar will show up here."}
         action={
-          <button className="btn-primary" onClick={() => navigate(`/trip/${id}`)}>
-            Add an event
-          </button>
+          canEdit && (
+            <button className="btn-primary" onClick={() => navigate(`/trip/${id}`)}>
+              Add an event
+            </button>
+          )
         }
       />
     );
@@ -164,13 +167,15 @@ const AllEvents = () => {
                     <div>
                       <div className="flex items-start justify-between gap-3">
                         <h3 className="text-lg font-extrabold text-ink">{event.title}</h3>
-                        <button
-                          type="button"
-                          className="border-0 bg-transparent p-0 text-sm font-extrabold text-plum underline hover:text-plum"
-                          onClick={() => setEventToDelete({ id: event.id, date, title: event.title })}
-                        >
-                          Delete event
-                        </button>
+                        {canEdit && (
+                          <button
+                            type="button"
+                            className="border-0 bg-transparent p-0 text-sm font-extrabold text-plum underline hover:text-plum"
+                            onClick={() => setEventToDelete({ id: event.id, date, title: event.title })}
+                          >
+                            Delete event
+                          </button>
+                        )}
                       </div>
                       <label htmlFor={`notes-${event.id}`} className="field-label mt-3">
                         Notes
@@ -178,7 +183,8 @@ const AllEvents = () => {
                       <textarea
                         id={`notes-${event.id}`}
                         className="field min-h-[5.5rem] resize-y"
-                        placeholder="Add notes, links, who's bringing what..."
+                        placeholder={canEdit ? "Add notes, links, who's bringing what..." : "No notes"}
+                        readOnly={!canEdit}
                         value={notesState[event.id] || ""}
                         onChange={(e) => handleNotesChange(event.id, e.target.value)}
                         // Auto-save when the user clicks away

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const {getAllAvailabilities,
+    getAvailabilitySummary,
     getUserAvailability,
     addOrUpdateAvailability,
     deleteAvailability
@@ -14,6 +15,9 @@ router.use(protect);
 
 // Get all availabilities for a specific trip
 router.get('/trip/:tripId', getAllAvailabilities);
+
+// Per-day counts, who is free, and the best runs of days (for the dates heatmap)
+router.get('/trip/:tripId/summary', getAvailabilitySummary);
 
 // Get a specific user's availability for a trip
 router.get('/trip/:tripId/user/:userId', getUserAvailability);
