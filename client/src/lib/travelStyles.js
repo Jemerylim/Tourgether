@@ -1,7 +1,8 @@
-import axios from "axios";
+import axios from "../api/client";
 import { Building2, Coffee, Gem, Landmark, Mountain, PiggyBank, Tent, Umbrella, UtensilsCrossed } from "lucide-react";
 import { API_URL } from "../config";
 import { questions } from "../pages/Quiz/destinations";
+import { getToken } from "../api/session";
 
 // How someone likes to travel. The values double as quiz tags (see pages/Quiz/destinations.js)
 // and match TRAVEL_STYLES in backend/models/User.js, so keep the three in step.
@@ -37,11 +38,10 @@ export const stylesFromAnswers = (answers, limit = 4) => {
 // Adds `styles` to what the signed-in user already has (up to the maximum) and saves it.
 // Resolves to the saved list.
 export const saveTravelStyles = async (styles) => {
-  const headers = { Authorization: `Bearer ${localStorage.getItem("authToken")}` };
-  const { data } = await axios.get(`${API_URL}/api/users/profile`, { headers });
+  const { data } = await axios.get(`${API_URL}/api/users/profile`);
   const merged = [...new Set([...(data.user.travelStyles || []), ...styles])].slice(0, MAX_TRAVEL_STYLES);
   const form = new FormData();
   form.append("travelStyles", JSON.stringify(merged));
-  const saved = await axios.put(`${API_URL}/api/users/update-profile`, form, { headers });
+  const saved = await axios.put(`${API_URL}/api/users/update-profile`, form);
   return saved.data.user.travelStyles;
 };

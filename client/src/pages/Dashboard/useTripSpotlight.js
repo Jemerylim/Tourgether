@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import axios from "../../api/client";
 import dayjs from "dayjs";
 import { API_URL } from "../../config";
 import { idOf } from "../Trips/expenseMath";
+import { getToken } from "../../api/session";
 
 const EMPTY = { events: null, checklist: null, expenses: null };
 
@@ -17,10 +18,9 @@ export default function useTripSpotlight(tripId, { withExpenses = false } = {}) 
     if (!tripId) return undefined;
 
     let cancelled = false;
-    const headers = { Authorization: `Bearer ${localStorage.getItem("authToken")}` };
     const get = (path) =>
       axios
-        .get(`${API_URL}${path}`, { headers })
+        .get(`${API_URL}${path}`)
         .then((response) => response.data.data)
         .catch(() => null);
 

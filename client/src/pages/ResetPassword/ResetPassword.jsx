@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import axios from "axios";
+import axios from "../../api/client";
 import AuthLayout from "../../components/AuthLayout/AuthLayout";
 import registerImage from "../../assets/Register.png";
 import { API_URL } from "../../config";

@@ -2,7 +2,7 @@
 // by wensity (https://21st.dev/@wensity/components/github-activity-grid), rebuilt as a month
 // calendar without framer-motion.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import axios from "axios";
+import axios from "../../api/client";
 import dayjs from "dayjs";
 import { CalendarCheck, ChevronLeft, ChevronRight, Lock, LockOpen, Pencil } from "lucide-react";
 import DateRangePicker from "../../components/DateRangePicker/DateRangePicker";
@@ -12,8 +12,7 @@ import { useToast } from "../../components/Toast/Toast";
 import { API_URL } from "../../config";
 import { apiErrorMessage } from "../../lib/apiError";
 import { cn } from "../../lib/utils";
-
-const authHeaders = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` } });
+import { getToken } from "../../api/session";
 
 const KEY = "YYYY-MM-DD";
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -98,7 +97,7 @@ const TripDates = ({ trip, userId, isOrganiser, onLocked }) => {
 
   const load = useCallback(async () => {
     try {
-      const { data } = await axios.get(`${API_URL}/api/usertripdate/trip/${trip._id}/summary`, authHeaders());
+      const { data } = await axios.get(`${API_URL}/api/usertripdate/trip/${trip._id}/summary`);
       setSummary(data.data);
       setError("");
     } catch (err) {
@@ -180,8 +179,7 @@ const TripDates = ({ trip, userId, isOrganiser, onLocked }) => {
     try {
       await axios.put(
         `${API_URL}/api/usertripdate/trip/${trip._id}/user/${userId}`,
-        { availDates: [...pastDays, ...draft] },
-        authHeaders()
+        { availDates: [...pastDays, ...draft] }
       );
       await load();
       setEditing(false);
@@ -206,7 +204,7 @@ const TripDates = ({ trip, userId, isOrganiser, onLocked }) => {
   const unlock = async () => {
     setUnlocking(false);
     try {
-      const { data } = await axios.put(`${API_URL}/api/trips/${trip._id}`, { startDate: null, endDate: null }, authHeaders());
+      const { data } = await axios.put(`${API_URL}/api/trips/${trip._id}`, { startDate: null, endDate: null });
       onLocked(data.data);
       showToast("Dates unlocked. The trip is back to dates to be decided.", "success");
     } catch (err) {
@@ -220,8 +218,7 @@ const TripDates = ({ trip, userId, isOrganiser, onLocked }) => {
     try {
       const { data } = await axios.put(
         `${API_URL}/api/trips/${trip._id}`,
-        { startDate: range.start, endDate: range.end },
-        authHeaders()
+        { startDate: range.start, endDate: range.end }
       );
       onLocked(data.data);
       fireConfetti({ count: 40 });

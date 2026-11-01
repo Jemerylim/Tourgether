@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { useLocation, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Backpack, CalendarDays, CalendarRange, CalendarPlus, ChevronLeft, ChevronRight, ListChecks, MapPin, MoreHorizontal, Plane, Trash2, UserPlus, Users, Vote, Wallet, X } from "lucide-react";
-import axios from "axios";
+import axios from "../../api/client";
 import Navbar from "../../components/Navbar/Navbar";
 import Avatar from "../../components/Avatar/Avatar";
 import AvatarStack from "../../components/Avatar/AvatarStack";
@@ -47,6 +47,7 @@ import { apiErrorMessage } from "../../lib/apiError";
 import { countdownLabel, coverPhoto, formatDate, isHappeningNow, tripLength } from "../../lib/trips";
 import { fromHere } from "../../lib/navigation";
 import { cn } from "../../lib/utils";
+import { getToken } from "../../api/session";
 
 // Every event on the trip calendar uses the app's lagoon colours instead of Schedule-X's blue
 const EVENT_CALENDARS = {
@@ -293,7 +294,7 @@ const Trip = () => {
   // Fetch trip, event details, and members
   useEffect(() => {
     const fetchTripDetails = async () => {
-      const authToken = localStorage.getItem("authToken");
+      const authToken = getToken();
       if (!authToken) {
         setError("Authorization token is missing. Please log in again.");
         return navigate("/login", { replace: true });
@@ -302,12 +303,8 @@ const Trip = () => {
       try {
         // Use Promise.all to load both the trip and user profile at the same time
         const [tripResponse, userResponse] = await Promise.all([
-          axios.get(`${API_URL}/api/trips/${id}`, {
-            headers: { Authorization: `Bearer ${authToken}` },
-          }),
-          axios.get(`${API_URL}/api/users/profile`, {
-            headers: { Authorization: `Bearer ${authToken}` },
-          }),
+          axios.get(`${API_URL}/api/trips/${id}`),
+          axios.get(`${API_URL}/api/users/profile`),
         ]);
   
         const fetchedTrip = tripResponse.data.data;
@@ -344,10 +341,7 @@ const Trip = () => {
 
         // Fetch events associated with the trip
         const eventsResponse = await axios.get(
-          `${API_URL}/api/events/trip/${id}`,
-          {
-            headers: { Authorization: `Bearer ${authToken}` },
-          }
+          `${API_URL}/api/events/trip/${id}`
         );
 
         // Format events for the calendar
@@ -375,7 +369,7 @@ const Trip = () => {
 
   const handleSubmitEvent = async (e) => {
     e.preventDefault();
-    const authToken = localStorage.getItem("authToken");
+    const authToken = getToken();
 
     if (!newEvent.title || !newEvent.date || !newEvent.startTime || !newEvent.endTime) {
         setErrorMessage("Please fill in all fields.");
@@ -408,8 +402,7 @@ const Trip = () => {
                     date: newEvent.date,
                     startTime: newEvent.startTime,
                     endTime: newEvent.endTime,
-                },
-                { headers: { Authorization: `Bearer ${authToken}` } }
+                }
             );
 
             setSelectedDates((prev) =>
@@ -433,8 +426,7 @@ const Trip = () => {
                     date: newEvent.date,
                     startTime: newEvent.startTime,
                     endTime: newEvent.endTime,
-                },
-                { headers: { Authorization: `Bearer ${authToken}` } }
+                }
             );
 
             setSelectedDates((prev) => [
@@ -465,12 +457,10 @@ const Trip = () => {
     if (!editingEvent) return;
     setConfirmingDelete(false);
 
-    const authToken = localStorage.getItem("authToken");
+    const authToken = getToken();
 
     try {
-        await axios.delete(`${API_URL}/api/events/${editingEvent.id}`, {
-            headers: { Authorization: `Bearer ${authToken}` },
-        });
+        await axios.delete(`${API_URL}/api/events/${editingEvent.id}`);
 
         // Remove the deleted event from the state
         setSelectedDates((prev) => prev.filter(event => event.id !== editingEvent.id));
@@ -489,12 +479,11 @@ const Trip = () => {
   };
 
   const handleInviteMember = async (email) => {
-    const authToken = localStorage.getItem("authToken");
+    const authToken = getToken();
     try {
       await axios.post(
         `${API_URL}/api/trips/${id}/invite`,
-        { email },
-        { headers: { Authorization: `Bearer ${authToken}` } }
+        { email }
       );
       showToast(`Invite sent to ${email}`, "success");
     } catch (error) {
@@ -504,11 +493,10 @@ const Trip = () => {
   };
 
   const handleRemoveMember = async (memberId) => {
-    const authToken = localStorage.getItem("authToken");
+    const authToken = getToken();
     try {
       await axios.delete(
-        `${API_URL}/api/trips/${id}/remove-member/${memberId}`,
-        { headers: { Authorization: `Bearer ${authToken}` } }
+        `${API_URL}/api/trips/${id}/remove-member/${memberId}`
       );
       setMembers((prev) => prev.filter((member) => member._id !== memberId));
       showToast("Member removed", "success");
@@ -530,8 +518,7 @@ const Trip = () => {
     try {
       const { data } = await axios.put(
         `${API_URL}/api/trips/${id}/members/${member._id}/role`,
-        { role },
-        { headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` } }
+        { role }
       );
       setTrip((prev) => ({ ...prev, memberRoles: data.data.memberRoles }));
       showToast(`${member.name} is now ${role === "viewer" ? "a viewer" : "an editor"}`, "success");
@@ -544,9 +531,7 @@ const Trip = () => {
   const handleDeleteTrip = async () => {
     setConfirmingTripDelete(false);
     try {
-      await axios.delete(`${API_URL}/api/trips/${id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` },
-      });
+      await axios.delete(`${API_URL}/api/trips/${id}`);
       showToast(`"${trip.name}" deleted`, "success");
       navigate("/my-trips", { replace: true });
     } catch (err) {

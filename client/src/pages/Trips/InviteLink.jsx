@@ -2,7 +2,7 @@
 // with copy button) and the copy -> check swap from https://21st.dev/@uiable/components/button-copy,
 // without Radix or framer-motion.
 import React, { useEffect, useRef, useState } from "react";
-import axios from "axios";
+import axios from "../../api/client";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { Check, Copy, Link2, RefreshCw, Share2 } from "lucide-react";
@@ -10,6 +10,7 @@ import { useToast } from "../../components/Toast/Toast";
 import { API_URL } from "../../config";
 import { apiErrorMessage } from "../../lib/apiError";
 import { cn } from "../../lib/utils";
+import { getToken } from "../../api/session";
 
 dayjs.extend(relativeTime);
 
@@ -20,7 +21,6 @@ const EXPIRY_OPTIONS = [
   { value: "never", label: "Never expires" },
 ];
 
-const authHeaders = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` } });
 const joinUrl = (token) => `${window.location.origin}/join/${token}`;
 
 // The organiser's shareable invite link: create it, copy or share it, reset or switch it off.
@@ -34,7 +34,7 @@ const InviteLink = ({ tripId, tripName }) => {
 
   useEffect(() => {
     axios
-      .get(`${API_URL}/api/trips/${tripId}/invite-link`, authHeaders())
+      .get(`${API_URL}/api/trips/${tripId}/invite-link`)
       .then(({ data }) => setLink(data.data))
       .catch((error) => {
         setLink(null);
@@ -48,8 +48,7 @@ const InviteLink = ({ tripId, tripName }) => {
     try {
       const { data } = await axios.post(
         `${API_URL}/api/trips/${tripId}/invite-link`,
-        { expiresInDays: expiry === "never" ? null : Number(expiry) },
-        authHeaders()
+        { expiresInDays: expiry === "never" ? null : Number(expiry) }
       );
       const wasReset = Boolean(link);
       setLink(data.data);
@@ -64,7 +63,7 @@ const InviteLink = ({ tripId, tripName }) => {
   const disableLink = async () => {
     setBusy(true);
     try {
-      await axios.delete(`${API_URL}/api/trips/${tripId}/invite-link`, authHeaders());
+      await axios.delete(`${API_URL}/api/trips/${tripId}/invite-link`);
       setLink(null);
       showToast("Invite link switched off", "success");
     } catch (error) {

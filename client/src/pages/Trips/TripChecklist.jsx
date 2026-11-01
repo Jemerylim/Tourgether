@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import axios from "axios";
+import axios from "../../api/client";
 import { Backpack, ListTodo, Plus, User, Users, X } from "lucide-react";
 import Avatar from "../../components/Avatar/Avatar";
 import { useToast } from "../../components/Toast/Toast";
@@ -8,6 +8,7 @@ import { fireConfetti } from "../../lib/confetti";
 import { API_URL, assetUrl } from "../../config";
 import { apiErrorMessage } from "../../lib/apiError";
 import { cn } from "../../lib/utils";
+import { getToken } from "../../api/session";
 
 const LISTS = [
   {
@@ -34,7 +35,6 @@ const LISTS = [
   },
 ];
 
-const authHeaders = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` } });
 const photoOf = (user) => assetUrl(user?.profilePicture);
 
 const isDoneFor = (item, userId) =>
@@ -271,7 +271,7 @@ const TripChecklist = ({ trip, members, userId, isOrganiser }) => {
 
   useEffect(() => {
     axios
-      .get(`${API_URL}/api/checklist/trip/${trip._id}`, authHeaders())
+      .get(`${API_URL}/api/checklist/trip/${trip._id}`)
       .then(({ data }) => setItems(data.data))
       .catch((error) => showToast(apiErrorMessage(error, "Couldn't load the lists"), "error"))
       .finally(() => setLoading(false));
@@ -281,7 +281,7 @@ const TripChecklist = ({ trip, members, userId, isOrganiser }) => {
 
   const handleAdd = async (body) => {
     try {
-      const { data } = await axios.post(`${API_URL}/api/checklist`, { ...body, tripId: trip._id }, authHeaders());
+      const { data } = await axios.post(`${API_URL}/api/checklist`, { ...body, tripId: trip._id });
       setItems((prev) => [...prev, data.data]);
       return true;
     } catch (error) {
@@ -304,7 +304,7 @@ const TripChecklist = ({ trip, members, userId, isOrganiser }) => {
           };
     replaceItem(optimistic);
     try {
-      const { data } = await axios.post(`${API_URL}/api/checklist/${item._id}/toggle`, {}, authHeaders());
+      const { data } = await axios.post(`${API_URL}/api/checklist/${item._id}/toggle`, {});
       replaceItem(data.data);
     } catch (error) {
       replaceItem(item);
@@ -314,7 +314,7 @@ const TripChecklist = ({ trip, members, userId, isOrganiser }) => {
 
   const handleAssign = async (item, assignedTo) => {
     try {
-      const { data } = await axios.put(`${API_URL}/api/checklist/${item._id}`, { assignedTo }, authHeaders());
+      const { data } = await axios.put(`${API_URL}/api/checklist/${item._id}`, { assignedTo });
       replaceItem(data.data);
     } catch (error) {
       showToast(apiErrorMessage(error, "Couldn't update that item"), "error");
@@ -324,7 +324,7 @@ const TripChecklist = ({ trip, members, userId, isOrganiser }) => {
   const handleDelete = async (item) => {
     setItems((prev) => prev.filter((other) => other._id !== item._id));
     try {
-      await axios.delete(`${API_URL}/api/checklist/${item._id}`, authHeaders());
+      await axios.delete(`${API_URL}/api/checklist/${item._id}`);
     } catch (error) {
       setItems((prev) => [...prev, item].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)));
       showToast(apiErrorMessage(error, "Couldn't delete that item"), "error");

@@ -15,8 +15,9 @@ import { EmptyState } from "../../components/PageState/PageState";
 import quizImage from "../../assets/Register.png";
 import { coverPhoto } from "../../lib/trips";
 import { questions, reasons, recommend } from "./destinations";
+import { getToken } from "../../api/session";
 
-const isLoggedIn = () => Boolean(localStorage.getItem("authToken"));
+const isLoggedIn = () => Boolean(getToken());
 
 // "Don't know where to go?" A few questions, then a destination suggestion.
 const Quiz = () => {

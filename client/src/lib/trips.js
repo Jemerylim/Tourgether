@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios from "../api/client";
 import { UNSPLASH_KEY } from "../config";
 
 const DAY_MS = 24 * 60 * 60 * 1000;

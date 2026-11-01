@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import axios from "../api/client";
 import { API_URL } from "../config";
 import { apiErrorMessage } from "./apiError";
 import { withCoverImages } from "./trips";
+import { getToken, clearToken } from "../api/session";
 
 // Loads the signed-in user, their trips (with cover photos) and the invitations waiting on
 // their answer, for Dashboard and My Trips. A missing or expired session sends the visitor
@@ -24,16 +25,14 @@ export default function useUserTrips() {
       setLoading(true);
       setError("");
 
-      const authToken = localStorage.getItem("authToken");
+      const authToken = getToken();
       if (!authToken) {
         navigate("/login", { replace: true });
         return;
       }
 
       try {
-        const response = await axios.get(`${API_URL}/api/trips/mine`, {
-          headers: { Authorization: `Bearer ${authToken}` },
-        });
+        const response = await axios.get(`${API_URL}/api/trips/mine`);
         const { user: me, trips: mine = [], invitations: waiting = [] } = response.data.data || {};
         const withImages = await withCoverImages(mine);
         if (!cancelled) {
@@ -44,7 +43,7 @@ export default function useUserTrips() {
       } catch (err) {
         if (cancelled) return;
         if (err.response?.status === 401) {
-          localStorage.removeItem("authToken");
+          clearToken();
           navigate("/login", { replace: true });
         } else {
           setError(apiErrorMessage(err, "Couldn't load your trips"));

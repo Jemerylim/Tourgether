@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { LogOut, Map, Settings, User } from "lucide-react";
 import logo from "../../assets/Tourgether-Logo.png";
+import { getToken, clearToken } from "../../api/session";
 
 const navLinkClass = ({ isActive }) =>
   ["btn-ghost", isActive ? "bg-ink/5" : ""].join(" ");
@@ -11,7 +12,7 @@ const Navbar = ({ overlay = false }) => {
   const navigate = useNavigate();
   // Logged in when an authToken is present in localStorage. Read it up front so the first
   // paint doesn't flash the signed-out links.
-  const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem("authToken"));
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!getToken());
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -23,7 +24,7 @@ const Navbar = ({ overlay = false }) => {
   }, [overlay]);
 
   const handleLogout = () => {
-    localStorage.removeItem("authToken");
+    clearToken();
     localStorage.removeItem("userEmail");
     setIsLoggedIn(false);
     navigate("/", { replace: true });

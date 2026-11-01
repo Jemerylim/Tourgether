@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import axios from "axios";
+import axios from "../../api/client";
 import { Plane, Plus } from "lucide-react";
 import Card from "../../components/Cards/Card";
 import ConfirmDialog from "../../components/Modal/ConfirmDialog";
@@ -14,6 +14,7 @@ import { apiErrorMessage } from "../../lib/apiError";
 import useUserTrips from "../../lib/useUserTrips";
 import { countdownLabel, formatDate, splitTrips } from "../../lib/trips";
 import { fromHere } from "../../lib/navigation";
+import { getToken } from "../../api/session";
 
 // Every trip, split into upcoming and past.
 const MyTrips = () => {
@@ -28,9 +29,7 @@ const MyTrips = () => {
     const trip = tripToDelete;
     setTripToDelete(null);
     try {
-      await axios.delete(`${API_URL}/api/trips/${trip._id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` },
-      });
+      await axios.delete(`${API_URL}/api/trips/${trip._id}`);
       removeTrip(trip._id);
       showToast(`"${trip.name}" deleted`, "success");
     } catch (err) {

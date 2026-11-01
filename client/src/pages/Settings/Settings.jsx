@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import axios from "../../api/client";
 import { KeyRound, Mail, TriangleAlert } from "lucide-react";
 import PageLayout from "../../components/PageLayout/PageLayout";
 import Modal from "../../components/Modal/Modal";
@@ -9,10 +9,9 @@ import { useToast } from "../../components/Toast/Toast";
 import { API_URL } from "../../config";
 import { apiErrorMessage } from "../../lib/apiError";
 import { cn } from "../../lib/utils";
+import { getToken, clearToken } from "../../api/session";
 
 const MIN_PASSWORD = 8;
-
-const authHeaders = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` } });
 
 // One settings card: icon, heading, a line of explanation, then the form
 const Card = ({ icon: Icon, title, text, danger = false, children }) => (
@@ -78,8 +77,7 @@ const EmailCard = ({ email, onChanged }) => {
     try {
       const { data } = await axios.put(
         `${API_URL}/api/users/email`,
-        { email: newEmail.trim(), currentPassword: password },
-        authHeaders()
+        { email: newEmail.trim(), currentPassword: password }
       );
       localStorage.setItem("userEmail", data.user.email);
       onChanged(data.user.email);
@@ -149,8 +147,7 @@ const PasswordCard = () => {
     try {
       await axios.put(
         `${API_URL}/api/users/password`,
-        { currentPassword: current, newPassword: next },
-        authHeaders()
+        { currentPassword: current, newPassword: next }
       );
       setCurrent("");
       setNext("");
@@ -224,8 +221,8 @@ const DeleteCard = () => {
     setBlockingTrips([]);
     setDeleting(true);
     try {
-      await axios.delete(`${API_URL}/api/users/me`, { ...authHeaders(), data: { password } });
-      localStorage.removeItem("authToken");
+      await axios.delete(`${API_URL}/api/users/me`, { data: { password } });
+      clearToken();
       localStorage.removeItem("userEmail");
       showToast("Your account has been deleted.", "success");
       navigate("/", { replace: true });
@@ -295,17 +292,17 @@ const Settings = () => {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const token = localStorage.getItem("authToken");
+    const token = getToken();
     if (!token) {
       navigate("/login", { replace: true });
       return;
     }
     axios
-      .get(`${API_URL}/api/users/profile`, authHeaders())
+      .get(`${API_URL}/api/users/profile`)
       .then(({ data }) => setEmail(data.user.email))
       .catch((err) => {
         if (err.response?.status === 401) {
-          localStorage.removeItem("authToken");
+          clearToken();
           navigate("/login", { replace: true });
           return;
         }

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import axios from "../../api/client";
 import { ChevronDown, Compass, ImageOff, Pencil, Plus, Trash2, X } from "lucide-react";
 import PlaceSearch from "../../components/PlaceSearch/PlaceSearch";
 import ConfirmDialog from "../../components/Modal/ConfirmDialog";
@@ -9,8 +9,7 @@ import { apiErrorMessage } from "../../lib/apiError";
 import { centreOf, listColour, recommendedPlaces } from "../../lib/places";
 import { cn } from "../../lib/utils";
 import TripMap from "./TripMap";
-
-const authHeaders = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` } });
+import { getToken } from "../../api/session";
 
 const NumberPin = ({ colour, number }) => (
   <span
@@ -297,7 +296,7 @@ const TripPlaces = ({ trip, userId, isOrganiser }) => {
 
   useEffect(() => {
     axios
-      .get(`${API_URL}/api/places/trip/${trip._id}`, authHeaders())
+      .get(`${API_URL}/api/places/trip/${trip._id}`)
       .then(({ data }) => {
         setLists(data.data.lists);
         setPlaces(data.data.places);
@@ -343,8 +342,7 @@ const TripPlaces = ({ trip, userId, isOrganiser }) => {
     try {
       const { data } = await axios.post(
         `${API_URL}/api/places`,
-        { tripId: trip._id, listId: list._id, ...place },
-        authHeaders()
+        { tripId: trip._id, listId: list._id, ...place }
       );
       setPlaces((prev) => [...prev, data.data]);
       setFocusPin({ ...data.data });
@@ -357,7 +355,7 @@ const TripPlaces = ({ trip, userId, isOrganiser }) => {
   const handleRemove = async (place) => {
     setPlaces((prev) => prev.filter((other) => other._id !== place._id));
     try {
-      await axios.delete(`${API_URL}/api/places/${place._id}`, authHeaders());
+      await axios.delete(`${API_URL}/api/places/${place._id}`);
     } catch (error) {
       setPlaces((prev) => [...prev, place].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)));
       showToast(apiErrorMessage(error, "Couldn't remove that place"), "error");
@@ -368,7 +366,7 @@ const TripPlaces = ({ trip, userId, isOrganiser }) => {
     event.preventDefault();
     if (!newList.trim()) return;
     try {
-      const { data } = await axios.post(`${API_URL}/api/places/trip/${trip._id}/lists`, { name: newList }, authHeaders());
+      const { data } = await axios.post(`${API_URL}/api/places/trip/${trip._id}/lists`, { name: newList });
       setLists((prev) => [...prev, data.data]);
       setNewList("");
     } catch (error) {
@@ -378,7 +376,7 @@ const TripPlaces = ({ trip, userId, isOrganiser }) => {
 
   const handleRename = async (list, name) => {
     try {
-      const { data } = await axios.put(`${API_URL}/api/places/trip/${trip._id}/lists/${list._id}`, { name }, authHeaders());
+      const { data } = await axios.put(`${API_URL}/api/places/trip/${trip._id}/lists/${list._id}`, { name });
       setLists((prev) => prev.map((other) => (other._id === list._id ? data.data : other)));
       return true;
     } catch (error) {
@@ -391,7 +389,7 @@ const TripPlaces = ({ trip, userId, isOrganiser }) => {
     const list = deletingList;
     setDeletingList(null);
     try {
-      await axios.delete(`${API_URL}/api/places/trip/${trip._id}/lists/${list._id}`, authHeaders());
+      await axios.delete(`${API_URL}/api/places/trip/${trip._id}/lists/${list._id}`);
       setLists((prev) => prev.filter((other) => other._id !== list._id));
       setPlaces((prev) => prev.filter((place) => place.list !== list._id));
       showToast(`"${list.name}" deleted`, "success");
@@ -404,8 +402,7 @@ const TripPlaces = ({ trip, userId, isOrganiser }) => {
     try {
       const { data } = await axios.put(
         `${API_URL}/api/places/trip/${trip._id}/destination`,
-        { destination: next },
-        authHeaders()
+        { destination: next }
       );
       setDestination(data.data);
       return true;

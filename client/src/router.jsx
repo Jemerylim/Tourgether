@@ -16,13 +16,14 @@ import ResetPassword from "./pages/ResetPassword/ResetPassword";
 import Profile from "./pages/Profile/Profile";
 import NotFound from "./pages/NotFound/NotFound";
 import Settings from "./pages/Settings/Settings";
+import { getToken } from "./api/session";
 
 // Landing and auth pages are for signed-out visitors; send signed-in ones on to where
 // they were heading (?redirect=) or their dashboard. An expired token is cleared by the
 // dashboard's 401 handling, which sends them back to /login.
 const GuestOnly = ({ children }) => {
     const location = useLocation();
-    if (!localStorage.getItem("authToken")) return children;
+    if (!getToken()) return children;
     const redirect = new URLSearchParams(location.search).get("redirect");
     const safe = redirect?.startsWith("/") && !redirect.startsWith("//");
     return <Navigate to={safe ? redirect : "/dashboard"} replace />;

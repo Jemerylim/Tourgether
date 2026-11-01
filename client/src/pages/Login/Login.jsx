@@ -5,6 +5,7 @@ import loginImage from "../../assets/Login.png";
 import AuthLayout from "../../components/AuthLayout/AuthLayout";
 import { API_URL } from "../../config";
 import { apiErrorMessage } from "../../lib/apiError";
+import { setToken } from "../../api/session";
 
 // The backend's login messages ("User not found", "Invalid credentials") are terse;
 // say what to do instead.
@@ -48,7 +49,7 @@ const Login = () => {
             });
 
             const { token } = response.data;
-            localStorage.setItem("authToken", token);
+            setToken(token);
             localStorage.setItem("userEmail", email);
 
             const redirectUrl = new URLSearchParams(location.search).get("redirect");

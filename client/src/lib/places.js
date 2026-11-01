@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios from "../api/client";
 
 // Place search and recommendations from OpenStreetMap, so no API key is needed:
 //  - Photon (komoot) for search-as-you-type

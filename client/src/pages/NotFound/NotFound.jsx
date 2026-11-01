@@ -3,10 +3,11 @@ import { Link } from "react-router-dom";
 import { Compass } from "lucide-react";
 import PageLayout from "../../components/PageLayout/PageLayout";
 import { EmptyState } from "../../components/PageState/PageState";
+import { getToken } from "../../api/session";
 
 // Catch-all for URLs that don't match a route, so a typo still gets the navbar and a way home.
 const NotFound = () => {
-  const signedIn = Boolean(localStorage.getItem("authToken"));
+  const signedIn = Boolean(getToken());
 
   return (
     <PageLayout title="Page not found" subtitle="That link doesn't lead anywhere.">

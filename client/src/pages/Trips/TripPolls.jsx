@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import axios from "../../api/client";
 import dayjs from "dayjs";
 import { CalendarCheck, Check, Plus, Trash2, Trophy, Vote, X } from "lucide-react";
 import Avatar from "../../components/Avatar/Avatar";
@@ -14,11 +14,10 @@ import { useToast } from "../../components/Toast/Toast";
 import { API_URL, assetUrl } from "../../config";
 import { apiErrorMessage } from "../../lib/apiError";
 import { cn } from "../../lib/utils";
+import { getToken } from "../../api/session";
 
 const MAX_OPTIONS = 10;
 const emptyDraft = { question: "", options: ["", ""], allowMultiple: false, date: "", startTime: "", endTime: "" };
-
-const authHeaders = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` } });
 
 const photoOf = (user) => assetUrl(user.profilePicture);
 
@@ -219,7 +218,7 @@ const TripPolls = ({ trip, userId, isOrganiser, onEventCreated }) => {
 
   useEffect(() => {
     axios
-      .get(`${API_URL}/api/polls/trip/${trip._id}`, authHeaders())
+      .get(`${API_URL}/api/polls/trip/${trip._id}`)
       .then(({ data }) => setPolls(data.data))
       .catch((error) => {
         console.error("Error fetching polls:", error);
@@ -234,7 +233,7 @@ const TripPolls = ({ trip, userId, isOrganiser, onEventCreated }) => {
 
   const handleVote = async (pollId, optionIds) => {
     try {
-      const { data } = await axios.post(`${API_URL}/api/polls/${pollId}/vote`, { optionIds }, authHeaders());
+      const { data } = await axios.post(`${API_URL}/api/polls/${pollId}/vote`, { optionIds });
       replacePoll(data.data);
     } catch (error) {
       showToast(apiErrorMessage(error, "Couldn't save your vote"), "error");
@@ -243,7 +242,7 @@ const TripPolls = ({ trip, userId, isOrganiser, onEventCreated }) => {
 
   const handleSuggest = async (pollId, text) => {
     try {
-      const { data } = await axios.post(`${API_URL}/api/polls/${pollId}/options`, { text }, authHeaders());
+      const { data } = await axios.post(`${API_URL}/api/polls/${pollId}/options`, { text });
       replacePoll(data.data);
       return true;
     } catch (error) {
@@ -273,8 +272,7 @@ const TripPolls = ({ trip, userId, isOrganiser, onEventCreated }) => {
     try {
       const { data } = await axios.post(
         `${API_URL}/api/polls`,
-        { ...draft, question: draft.question.trim(), options, tripId: trip._id },
-        authHeaders()
+        { ...draft, question: draft.question.trim(), options, tripId: trip._id }
       );
       setPolls((prev) => [data.data, ...prev]);
       closeCreateForm();
@@ -307,7 +305,7 @@ const TripPolls = ({ trip, userId, isOrganiser, onEventCreated }) => {
     if (createEvent && endTime <= startTime) return setFormError("The end time has to be after the start time.");
 
     try {
-      const { data } = await axios.post(`${API_URL}/api/polls/${closing._id}/close`, closeForm, authHeaders());
+      const { data } = await axios.post(`${API_URL}/api/polls/${closing._id}/close`, closeForm);
       replacePoll(data.data.poll);
       if (data.data.event) onEventCreated(data.data.event);
       setClosing(null);
@@ -322,7 +320,7 @@ const TripPolls = ({ trip, userId, isOrganiser, onEventCreated }) => {
     const poll = deleting;
     setDeleting(null);
     try {
-      await axios.delete(`${API_URL}/api/polls/${poll._id}`, authHeaders());
+      await axios.delete(`${API_URL}/api/polls/${poll._id}`);
       setPolls((prev) => prev.filter((p) => p._id !== poll._id));
       showToast("Poll deleted", "success");
     } catch (error) {

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+import axios from "../../api/client";
 import { Camera, Compass, Pencil, Settings } from "lucide-react";
 import Avatar from "../../components/Avatar/Avatar";
 import PageLayout from "../../components/PageLayout/PageLayout";
@@ -12,6 +12,7 @@ import { apiErrorMessage } from "../../lib/apiError";
 import useUserTrips from "../../lib/useUserTrips";
 import ProfileTravel from "./ProfileTravel";
 import { StyleChips, StylePicker } from "./TravelStyles";
+import { getToken, clearToken } from "../../api/session";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -32,15 +33,13 @@ const Profile = () => {
 
   useEffect(() => {
     const fetchUserProfile = async () => {
-      const token = localStorage.getItem("authToken");
+      const token = getToken();
       if (!token) {
         navigate("/login", { replace: true });
         return;
       }
       try {
-        const response = await axios.get(`${API_URL}/api/users/profile`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await axios.get(`${API_URL}/api/users/profile`);
 
         setUser(response.data.user);
         setName(response.data.user.name);
@@ -50,7 +49,7 @@ const Profile = () => {
       } catch (err) {
         console.error("Error fetching profile:", err);
         if (err.response?.status === 401) {
-          localStorage.removeItem("authToken");
+          clearToken();
           navigate("/login", { replace: true });
           return;
         }
@@ -74,7 +73,7 @@ const Profile = () => {
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem("authToken");
+    const token = getToken();
 
     const formData = new FormData();
     formData.append("name", name);
@@ -87,16 +86,11 @@ const Profile = () => {
     setSaving(true);
     try {
       await axios.put(`${API_URL}/api/users/update-profile`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       // Fetch updated data from server after update
-      const updatedUserResponse = await axios.get(`${API_URL}/api/users/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const updatedUserResponse = await axios.get(`${API_URL}/api/users/profile`);
 
       setUser(updatedUserResponse.data.user);
       setProfilePicture(null);
@@ -120,18 +114,16 @@ const Profile = () => {
       return;
     }
 
-    const token = localStorage.getItem("authToken");
+    const token = getToken();
     const formData = new FormData();
     formData.append("profilePicture", file);
     setProfilePicture(file); // shows the preview while uploading
     setUploading(true);
     try {
       await axios.put(`${API_URL}/api/users/update-profile`, formData, {
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
+        headers: { "Content-Type": "multipart/form-data" },
       });
-      const res = await axios.get(`${API_URL}/api/users/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await axios.get(`${API_URL}/api/users/profile`);
       setUser(res.data.user);
       showToast("Photo updated", "success");
     } catch (err) {

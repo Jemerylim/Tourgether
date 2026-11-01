@@ -7,6 +7,7 @@ import Ticket from '../../components/Ticket/Ticket';
 import { LoadingState } from '../../components/PageState/PageState';
 import { API_URL } from "../../config";
 import { apiErrorMessage } from '../../lib/apiError';
+import { getToken, clearToken } from "../../api/session";
 
 const AcceptInvitation = () => {
   const { tripId } = useParams();
@@ -19,7 +20,7 @@ const AcceptInvitation = () => {
 
   useEffect(() => {
     const checkInvitationStatus = async () => {
-      const authToken = localStorage.getItem('authToken');
+      const authToken = getToken();
   
       if (!authToken) {
         console.log('No auth token found, redirecting to login.');
@@ -32,16 +33,14 @@ const AcceptInvitation = () => {
         
         // Fetch invitation status
         const statusResponse = await axios.get(
-          `${API_URL}/api/trips/${tripId}/status?userId=${userId}`,
-          { headers: { Authorization: `Bearer ${authToken}` } }
+          `${API_URL}/api/trips/${tripId}/status?userId=${userId}`
         );
         console.log('Invitation status:', statusResponse.data.status);
         setInvitationStatus(statusResponse.data.status);
   
         // Fetch current user profile
         const profileResponse = await axios.get(
-          `${API_URL}/api/users/profile`,
-          { headers: { Authorization: `Bearer ${authToken}` } }
+          `${API_URL}/api/users/profile`
         );
         const currentUserId = profileResponse.data.user._id;
         setInvitedUser(profileResponse.data.user.name);
@@ -59,7 +58,7 @@ const AcceptInvitation = () => {
           setError('You were not invited to this trip.');
         } else if (error.response?.status === 401) {
           console.log('Session expired or unauthorized. Redirecting to login.');
-          localStorage.removeItem('authToken');
+          clearToken();
           navigate(`/login?redirect=/trip/${tripId}/accept?userId=${userId}`, { replace: true });
         } else {
           console.error('Error fetching invitation status or profile:', error);
@@ -74,13 +73,12 @@ const AcceptInvitation = () => {
   }, [tripId, userId, navigate]);  
 
   const handleAccept = async () => {
-    const authToken = localStorage.getItem('authToken');
+    const authToken = getToken();
     try {
       console.log('Accepting invitation...');
       await axios.post(
         `${API_URL}/api/trips/${tripId}/accept-invitation`,
-        { userId },
-        { headers: { Authorization: `Bearer ${authToken}` } }
+        { userId }
       );
       setInvitationStatus('accepted');
     } catch (error) {
@@ -90,13 +88,12 @@ const AcceptInvitation = () => {
   };
 
   const handleDecline = async () => {
-    const authToken = localStorage.getItem('authToken');
+    const authToken = getToken();
     try {
       console.log('Declining invitation...');
       await axios.delete(
         `${API_URL}/api/trips/${tripId}/decline-invitation`,
         {
-          headers: { Authorization: `Bearer ${authToken}` },
           data: { userId }, // Pass userId in the request body
         }
       );

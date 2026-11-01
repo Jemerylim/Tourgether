@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import axios from "axios";
+import axios from "../../api/client";
 import { CalendarDays, Users } from "lucide-react";
 import Navbar from "../../components/Navbar/Navbar";
 import Scene from "../../components/Scene/Scene";
@@ -9,6 +9,7 @@ import { LoadingState } from "../../components/PageState/PageState";
 import { API_URL } from "../../config";
 import { apiErrorMessage } from "../../lib/apiError";
 import { formatDate } from "../../lib/trips";
+import { getToken, clearToken } from "../../api/session";
 
 // Landing page for a shareable invite link (/join/:token). Shows what the trip is, then
 // joins it, sending visitors who aren't signed in to log in or register first.
@@ -19,7 +20,7 @@ const JoinTrip = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
-  const signedIn = Boolean(localStorage.getItem("authToken"));
+  const signedIn = Boolean(getToken());
   const redirect = `?redirect=${encodeURIComponent(`/join/${token}`)}`;
 
   useEffect(() => {
@@ -33,13 +34,11 @@ const JoinTrip = () => {
   const join = async () => {
     setJoining(true);
     try {
-      const { data } = await axios.post(`${API_URL}/api/trips/join/${token}`, {}, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` },
-      });
+      const { data } = await axios.post(`${API_URL}/api/trips/join/${token}`, {});
       navigate(`/trip/${data.data.tripId}`, { replace: true });
     } catch (err) {
       if (err.response?.status === 401) {
-        localStorage.removeItem("authToken");
+        clearToken();
         navigate(`/login${redirect}`, { replace: true });
         return;
       }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import axios from "../../api/client";
 import dayjs from "dayjs";
 import { Plane } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -12,6 +12,7 @@ import { API_URL } from "../../config";
 import { apiErrorMessage } from "../../lib/apiError";
 import { coverPhoto } from "../../lib/trips";
 import { fireConfetti } from "../../lib/confetti";
+import { getToken } from "../../api/session";
 
 const formatShort = (key) =>
   new Date(`${key}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short" });
@@ -52,11 +53,10 @@ const CreateTrip = () => {
   // Look up an invited person by email or by name. Returns a message to reject them (not
   // registered, ambiguous name, yourself) or `{ email }` with their real email address.
   const validateInvite = async (query) => {
-    const authToken = localStorage.getItem("authToken");
+    const authToken = getToken();
     try {
       const response = await axios.get(`${API_URL}/api/users/lookup`, {
         params: { q: query },
-        headers: { Authorization: `Bearer ${authToken}` },
       });
       const { name, email } = response.data.user;
       if (email.toLowerCase() === (localStorage.getItem("userEmail") || "").toLowerCase()) {
@@ -101,7 +101,7 @@ const CreateTrip = () => {
       }
     }
 
-    const authToken = localStorage.getItem("authToken");
+    const authToken = getToken();
     if (!authToken) {
       setError("You're signed out. Log in again to create a trip.");
       return;
@@ -116,8 +116,7 @@ const CreateTrip = () => {
       if (groupEmails.length > 0) {
         const response = await axios.post(
           `${API_URL}/api/users/get-ids-by-emails`,
-          { emails: groupEmails },
-          { headers: { Authorization: `Bearer ${authToken}` } }
+          { emails: groupEmails }
         );
         userIds = response.data.userIds; // Expecting { userIds: [...] }
       }
@@ -130,9 +129,7 @@ const CreateTrip = () => {
         endDate: pickLater ? undefined : endDate,
       };
 
-      const tripResponse = await axios.post(`${API_URL}/api/trips/create-trip`, tripDetails, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
+      const tripResponse = await axios.post(`${API_URL}/api/trips/create-trip`, tripDetails);
       if (tripResponse.data.emailsFailed > 0) {
         showToast("Trip created, but the invitation emails couldn't be sent. Let your group know it's ready.", "info");
       }

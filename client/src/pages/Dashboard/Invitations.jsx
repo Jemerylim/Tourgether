@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import axios from "axios";
+import axios from "../../api/client";
 import { Mail } from "lucide-react";
 import { API_URL } from "../../config";
 import { apiErrorMessage } from "../../lib/apiError";
 import { formatDate } from "../../lib/trips";
 import { useToast } from "../../components/Toast/Toast";
+import { getToken } from "../../api/session";
 
 const datesOf = (invitation) =>
   invitation.startDate ? `${formatDate(invitation.startDate)} – ${formatDate(invitation.endDate)}` : "Dates to be decided";
@@ -17,14 +18,13 @@ const Invitations = ({ invitations, onAccepted, onDeclined }) => {
 
   const answer = async (invitation, accept) => {
     setBusy(invitation._id);
-    const headers = { Authorization: `Bearer ${localStorage.getItem("authToken")}` };
     try {
       if (accept) {
-        await axios.post(`${API_URL}/api/trips/${invitation._id}/accept-invitation`, {}, { headers });
+        await axios.post(`${API_URL}/api/trips/${invitation._id}/accept-invitation`, {});
         showToast(`You're on "${invitation.name}"`, "success");
         onAccepted(invitation._id);
       } else {
-        await axios.delete(`${API_URL}/api/trips/${invitation._id}/decline-invitation`, { headers });
+        await axios.delete(`${API_URL}/api/trips/${invitation._id}/decline-invitation`);
         showToast(`Declined "${invitation.name}"`, "success");
         onDeclined(invitation._id);
       }

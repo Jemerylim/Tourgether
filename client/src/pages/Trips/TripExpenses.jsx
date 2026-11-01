@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import axios from "../../api/client";
 import dayjs from "dayjs";
 import { ArrowLeftRight, ArrowRight, Download, Pencil, Plus, RotateCcw, Search, Wallet } from "lucide-react";
 import Avatar from "../../components/Avatar/Avatar";
@@ -13,8 +13,8 @@ import { apiErrorMessage } from "../../lib/apiError";
 import { cn } from "../../lib/utils";
 import ExpenseForm, { bodyFromForm, formFor } from "./ExpenseForm";
 import { CATEGORIES, CURRENCIES, categoryOf, expensesCsv, formatMoney, idOf, invertRate, netOf, rateText } from "./expenseMath";
+import { getToken } from "../../api/session";
 
-const authHeaders = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` } });
 const photoOf = (user) => assetUrl(user?.profilePicture);
 
 // Simplify debts and which way round rates read are per-viewer preferences, so they live
@@ -73,7 +73,7 @@ const TripExpenses = ({ trip, members, userId, isOrganiser }) => {
 
   useEffect(() => {
     axios
-      .get(`${API_URL}/api/expenses/trip/${trip._id}`, authHeaders())
+      .get(`${API_URL}/api/expenses/trip/${trip._id}`)
       .then(({ data }) => applyData(data.data))
       .catch((error) => showToast(apiErrorMessage(error, "Couldn't load the expenses"), "error"))
       .finally(() => setLoading(false));
@@ -135,8 +135,8 @@ const TripExpenses = ({ trip, members, userId, isOrganiser }) => {
 
     try {
       const { data } = form._id
-        ? await axios.put(`${API_URL}/api/expenses/${form._id}`, body, authHeaders())
-        : await axios.post(`${API_URL}/api/expenses`, { ...body, tripId: trip._id }, authHeaders());
+        ? await axios.put(`${API_URL}/api/expenses/${form._id}`, body)
+        : await axios.post(`${API_URL}/api/expenses`, { ...body, tripId: trip._id });
       applyData(data.data);
       showToast(form._id ? "Expense updated" : "Expense added", "success");
       closeForm();
@@ -148,7 +148,7 @@ const TripExpenses = ({ trip, members, userId, isOrganiser }) => {
   const remove = async () => {
     setConfirmingDelete(false);
     try {
-      const { data } = await axios.delete(`${API_URL}/api/expenses/${form._id}`, authHeaders());
+      const { data } = await axios.delete(`${API_URL}/api/expenses/${form._id}`);
       applyData(data.data);
       showToast(form.category === "settlement" ? "Payment deleted" : "Expense deleted", "success");
       closeForm();
@@ -159,7 +159,7 @@ const TripExpenses = ({ trip, members, userId, isOrganiser }) => {
 
   const restore = async (expense) => {
     try {
-      const { data } = await axios.post(`${API_URL}/api/expenses/${expense._id}/restore`, {}, authHeaders());
+      const { data } = await axios.post(`${API_URL}/api/expenses/${expense._id}/restore`, {});
       applyData(data.data);
       showToast(`Restored "${expense.description}"`, "success");
     } catch (error) {
@@ -171,8 +171,7 @@ const TripExpenses = ({ trip, members, userId, isOrganiser }) => {
     try {
       const { data } = await axios.put(
         `${API_URL}/api/expenses/trip/${trip._id}/currency`,
-        { baseCurrency: value || null },
-        authHeaders()
+        { baseCurrency: value || null }
       );
       applyData(data.data);
     } catch (error) {
@@ -189,7 +188,7 @@ const TripExpenses = ({ trip, members, userId, isOrganiser }) => {
     const rate = event === null ? null : rateFlipped ? 1 / typed : typed;
     if (rate !== null && !(rate > 0)) return;
     try {
-      const { data } = await axios.put(`${API_URL}/api/expenses/trip/${trip._id}/rates`, { currency, rate }, authHeaders());
+      const { data } = await axios.put(`${API_URL}/api/expenses/trip/${trip._id}/rates`, { currency, rate });
       applyData(data.data);
       setEditingRate(null);
       showToast(rate === null ? `${currency} now settles separately` : `${currency} now settles in ${baseCurrency}`, "success");
@@ -232,8 +231,7 @@ const TripExpenses = ({ trip, members, userId, isOrganiser }) => {
             { user: from, paid: value, owed: 0 },
             { user: to, paid: 0, owed: value, weight: value },
           ],
-        },
-        authHeaders()
+        }
       );
       applyData(data.data);
       showToast("Payment recorded", "success");

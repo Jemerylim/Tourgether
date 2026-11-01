@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import axios from "../../api/client";
 import dayjs from "dayjs";
 import { CalendarDays, StickyNote } from "lucide-react";
 import PageLayout from "../../components/PageLayout/PageLayout";
@@ -10,6 +10,7 @@ import { useToast } from "../../components/Toast/Toast";
 import { EmptyState, ErrorState, LoadingState } from "../../components/PageState/PageState";
 import { API_URL } from "../../config";
 import { apiErrorMessage } from "../../lib/apiError";
+import { getToken } from "../../api/session";
 
 const AllEvents = () => {
   const { id } = useParams();
@@ -26,22 +27,18 @@ const AllEvents = () => {
 
   useEffect(() => {
     const fetchEvents = async () => {
-      const authToken = localStorage.getItem("authToken");
+      const authToken = getToken();
       if (!authToken) {
         return navigate("/login", { replace: true });
       }
 
       try {
         // Fetch trip details
-        const tripResponse = await axios.get(`${API_URL}/api/trips/${id}`, {
-          headers: { Authorization: `Bearer ${authToken}` },
-        });
+        const tripResponse = await axios.get(`${API_URL}/api/trips/${id}`);
         setTrip(tripResponse.data.data);
 
         // Fetch events associated with the trip
-        const eventsResponse = await axios.get(`${API_URL}/api/events/trip/${id}`, {
-          headers: { Authorization: `Bearer ${authToken}` },
-        });
+        const eventsResponse = await axios.get(`${API_URL}/api/events/trip/${id}`);
 
         // Format each event
         const formattedEvents = eventsResponse.data.data.map((event) => ({
@@ -87,13 +84,12 @@ const AllEvents = () => {
 
   // Auto-save notes to the server (PUT /api/events/:id), called when the textarea loses focus
   const handleSaveNotes = async (eventId) => {
-    const authToken = localStorage.getItem("authToken");
+    const authToken = getToken();
     setSaveStatus((prev) => ({ ...prev, [eventId]: "saving" }));
     try {
       await axios.put(
         `${API_URL}/api/events/${eventId}`,
-        { notes: notesState[eventId] || "" },
-        { headers: { Authorization: `Bearer ${authToken}` } }
+        { notes: notesState[eventId] || "" }
       );
       setSaveStatus((prev) => ({ ...prev, [eventId]: "saved" }));
     } catch (err) {
@@ -104,12 +100,10 @@ const AllEvents = () => {
 
   const handleDeleteEvent = async () => {
     const { id: eventId, date } = eventToDelete;
-    const authToken = localStorage.getItem("authToken");
+    const authToken = getToken();
     setEventToDelete(null);
     try {
-      await axios.delete(`${API_URL}/api/events/${eventId}`, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
+      await axios.delete(`${API_URL}/api/events/${eventId}`);
       setEvents((prev) => {
         const remaining = prev[date].filter((e) => e.id !== eventId);
         const next = { ...prev, [date]: remaining };
