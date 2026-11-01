@@ -3,9 +3,9 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const crypto = require("crypto");
 const { config } = require('../config/env');
-const { sendMail, clientLink, escapeHtml } = require('../utils/mailer');
-const confirmPassword = require('../utils/confirmPassword');
-const deleteTripData = require('../utils/deleteTripData');
+const { sendMail, clientLink, escapeHtml } = require('../lib/mailer');
+const confirmPassword = require('../services/confirmPassword');
+const deleteTripData = require('../services/deleteTripData');
 const Trip = require('../models/Trip');
 const fs = require('fs');
 const path = require('path');
@@ -513,7 +513,22 @@ const deleteAccount = async (req, res) => {
   }
 };
 
+// Function to get a user's public details by ID
+const getUserById = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('name email');
+    if (!user || user.deletedAt) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.status(200).json(user);
+  } catch (error) {
+    console.error('Error retrieving user details:', error);
+    res.status(500).json({ message: 'Failed to retrieve user details' });
+  }
+};
+
 module.exports = {
+  getUserById,
   changeEmail,
   changePassword,
   deleteAccount,

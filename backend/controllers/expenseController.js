@@ -1,7 +1,7 @@
 const Expense = require('../models/Expense');
 const { CATEGORIES, SPLIT_METHODS } = require('../models/Expense');
-const { memberIds, loadTripForMember } = require('../utils/tripAccess');
-const { isCurrency, toMinor, toMajor, settleUp } = require('../utils/settleUp');
+const { memberIds, loadTripForMember } = require('../services/tripAccess');
+const { isCurrency, toMinor, toMajor, settleUp } = require('../lib/settleUp');
 
 const DATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/;
 const PEOPLE = 'name profilePicture';

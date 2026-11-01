@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const hashPassword = require('../middlewares/hashPassword');
+const hashPassword = require('./hooks/hashPassword');
 
 // How a person likes to travel. Picked on their profile or seeded from the travel quiz
 // (client/src/pages/Quiz), so keep these keys in step with client/src/lib/travelStyles.js.

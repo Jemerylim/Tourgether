@@ -1,7 +1,7 @@
 const UserTripDate = require('../models/UserTripDate');
 const User = require('../models/User');
-const { loadTripForMember, memberIds } = require('../utils/tripAccess');
-const { dayKey, dailyAvailability, bestRanges } = require('../utils/bestDates');
+const { loadTripForMember, memberIds } = require('../services/tripAccess');
+const { dayKey, dailyAvailability, bestRanges } = require('../lib/bestDates');
 
 const MAX_AVAIL_DAYS = 366;
 

@@ -8,9 +8,9 @@ const Expense = require('../models/Expense');
 const ChecklistItem = require('../models/ChecklistItem');
 const Place = require('../models/Place');
 const mongoose = require('mongoose');
-const { sendMail, clientLink, escapeHtml } = require('../utils/mailer');
-const { loadTripForMember, roleOf } = require('../utils/tripAccess');
-const deleteTripData = require('../utils/deleteTripData');
+const { sendMail, clientLink, escapeHtml } = require('../lib/mailer');
+const { loadTripForMember, roleOf } = require('../services/tripAccess');
+const deleteTripData = require('../services/deleteTripData');
 
 // Email subjects must stay on one line
 const oneLine = (text) => String(text).replace(/[\r\n]+/g, ' ');

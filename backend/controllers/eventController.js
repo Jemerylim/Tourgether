@@ -1,5 +1,5 @@
 const Event = require('../models/Event');
-const { loadTripForMember, loadTripForEditor } = require('../utils/tripAccess');
+const { loadTripForMember, loadTripForEditor } = require('../services/tripAccess');
 
 // Load an event and check the signed-in user is on its trip (and, with `forEdit`, may
 // change it: viewers can't). Sends the error response itself and returns null when the

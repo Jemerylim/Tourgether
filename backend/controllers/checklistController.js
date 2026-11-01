@@ -1,5 +1,5 @@
 const ChecklistItem = require('../models/ChecklistItem');
-const { memberIds, loadTripForMember } = require('../utils/tripAccess');
+const { memberIds, loadTripForMember } = require('../services/tripAccess');
 
 const PEOPLE = 'name profilePicture';
 const MAX_ITEMS = 200;

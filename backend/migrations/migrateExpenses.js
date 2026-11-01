@@ -1,6 +1,6 @@
 const Expense = require('../models/Expense');
 const Trip = require('../models/Trip');
-const { toMinor, toMajor, splitShares } = require('./settleUp');
+const { toMinor, toMajor, splitShares } = require('../lib/settleUp');
 
 // Exchange rates used to be set on each expense (`fx: { currency, rate }`). They now belong
 // to the trip, one per currency pair: keep the newest rate for each pair the trip doesn't

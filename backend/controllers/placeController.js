@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const Trip = require('../models/Trip');
 const Place = require('../models/Place');
-const { loadTripForMember } = require('../utils/tripAccess');
+const { loadTripForMember } = require('../services/tripAccess');
 
 const MAX_LISTS = 20;
 const MAX_PLACES = 300;
