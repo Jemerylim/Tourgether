@@ -17,7 +17,14 @@ const checklistRoutes = require('./routes/checklistRoutes');
 const app = express();
 
 // Serve static files (e.g., images)
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+// Locked down so a stray HTML/SVG file here can't run script on the app's origin
+app.use("/uploads", express.static(path.join(__dirname, "uploads"), {
+  setHeaders: (res) => {
+    res.set("X-Content-Type-Options", "nosniff");
+    res.set("Content-Security-Policy", "default-src 'none'; img-src 'self'; sandbox");
+    res.set("Content-Disposition", "inline");
+  },
+}));
 
 // Middleware to parse incoming JSON requests
 app.use(express.json());

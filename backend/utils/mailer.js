@@ -24,4 +24,14 @@ const clientLink = (path, query = {}) => {
   return url.toString();
 };
 
-module.exports = { sendMail, clientLink };
+// Escape user-supplied text (names, trip titles) before putting it in an email's HTML
+const escapeHtml = (value) =>
+  String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  })[char]);
+
+module.exports = { sendMail, clientLink, escapeHtml };

@@ -1,6 +1,17 @@
 const Event = require('../models/Event');
-const Trip = require('../models/Trip');
 const { loadTripForMember } = require('../utils/tripAccess');
+
+// Load an event and check the signed-in user is on its trip. Sends the error response
+// itself and returns null when the request can't go on.
+const loadEventForMember = async (req, res, id) => {
+  const event = await Event.findById(id);
+  if (!event) {
+    res.status(404).json({ success: false, message: "Event not found" });
+    return null;
+  }
+  const trip = await loadTripForMember(req, res, event.trip);
+  return trip ? event : null;
+};
 
 // Create a new event
 exports.createEvent = async (req, res) => {
@@ -21,11 +32,9 @@ exports.createEvent = async (req, res) => {
   }
 
   try {
-    // Check if the trip exists
-    const trip = await Trip.findById(tripId);
-    if (!trip) {
-      return res.status(404).json({ success: false, message: "Trip not found" });
-    }
+    // The trip must exist and the signed-in user must be on it
+    const trip = await loadTripForMember(req, res, tripId);
+    if (!trip) return;
 
     // Combine date with startTime and endTime
     const startDateTime = new Date(`${date}T${startTime}`);
@@ -88,14 +97,9 @@ exports.getEvent = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const event = await Event.findById(id).populate('trip', 'name');
-
-    if (!event) {
-      return res.status(404).json({
-        success: false,
-        message: "Event not found",
-      });
-    }
+    const event = await loadEventForMember(req, res, id);
+    if (!event) return;
+    await event.populate('trip', 'name');
 
     res.status(200).json({
       success: true,
@@ -117,18 +121,14 @@ exports.updateEvent = async (req, res) => {
   const { title, description, date, startTime, endTime, notes } = req.body;
 
   try {
+    const found = await loadEventForMember(req, res, id);
+    if (!found) return;
+
     const event = await Event.findByIdAndUpdate(
-      id,
+      found._id,
       { title, description, date, startTime, endTime, notes },
       { new: true, runValidators: true }
     );
-
-    if (!event) {
-      return res.status(404).json({
-        success: false,
-        message: "Event not found",
-      });
-    }
 
     res.status(200).json({
       success: true,
@@ -149,14 +149,9 @@ exports.deleteEvent = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const event = await Event.findByIdAndDelete(id);
-
-    if (!event) {
-      return res.status(404).json({
-        success: false,
-        message: "Event not found",
-      });
-    }
+    const event = await loadEventForMember(req, res, id);
+    if (!event) return;
+    await event.deleteOne();
 
     res.status(200).json({
       success: true,

@@ -5,6 +5,10 @@ const {getAllAvailabilities,
     addOrUpdateAvailability,
     deleteAvailability
 }= require('../controllers/userTripDateController');
+const { protect } = require('../middlewares/authMiddleware');
+
+// Every availability route needs a signed-in trip member (checked in the controller)
+router.use(protect);
 
 // Routes for UserTripDate
 
@@ -14,14 +18,10 @@ router.get('/trip/:tripId', getAllAvailabilities);
 // Get a specific user's availability for a trip
 router.get('/trip/:tripId/user/:userId', getUserAvailability);
 
-// Add or update a user's availability for a trip
+// Add or update a user's availability for a trip (own availability only)
 router.put('/trip/:tripId/user/:userId', addOrUpdateAvailability);
 
-// Delete a user's availability for a trip
+// Delete a user's availability for a trip (own availability only)
 router.delete('/trip/:tripId/user/:userId', deleteAvailability);
-
-router.get('/test', (req, res) => {
-    res.status(200).json({ message: 'UserTripDate route is working!' });
-});
 
 module.exports = router;

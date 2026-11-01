@@ -5,6 +5,8 @@ const tripSchema = new mongoose.Schema({
   name: {
     type: String,
     required: [true, 'Please add a trip name'],
+    trim: true,
+    maxlength: [100, 'Trip names can be at most 100 characters'],
   },
   members: [
     {

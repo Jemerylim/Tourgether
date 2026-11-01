@@ -45,6 +45,16 @@ const userSchema = new mongoose.Schema({
 
 userSchema.pre('save', hashPassword);
 
+// Never send password or reset-token hashes out in API responses
+userSchema.set('toJSON', {
+  transform: (doc, ret) => {
+    delete ret.password;
+    delete ret.resetPasswordToken;
+    delete ret.resetPasswordExpires;
+    return ret;
+  },
+});
+
 // Export the User model
 const User = mongoose.model('User', userSchema);
 module.exports = User;

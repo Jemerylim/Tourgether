@@ -1,10 +1,23 @@
 const UserTripDate = require('../models/UserTripDate');
+const { loadTripForMember } = require('../utils/tripAccess');
+
+// People can only change their own availability. Sends the error response itself
+// and returns false when the request can't go on.
+const isSelf = (req, res) => {
+    if (req.params.userId !== String(req.user._id)) {
+        res.status(403).json({ message: 'You can only change your own availability.' });
+        return false;
+    }
+    return true;
+};
 
 // Get all availabilities for a specific trip
 const getAllAvailabilities = async (req, res) => {
     const { tripId } = req.params;
     try {
-        const availabilities = await UserTripDate.find({ tripId }).populate('userId', 'name email');
+        const trip = await loadTripForMember(req, res, tripId);
+        if (!trip) return;
+        const availabilities = await UserTripDate.find({ tripId: trip._id }).populate('userId', 'name email');
         res.status(200).json(availabilities);
     } catch (err) {
         console.error(err);
@@ -16,7 +29,9 @@ const getAllAvailabilities = async (req, res) => {
 const getUserAvailability = async (req, res) => {
     const { tripId, userId } = req.params;
     try {
-        const availability = await UserTripDate.findOne({ tripId, userId }).populate('userId', 'name email');
+        const trip = await loadTripForMember(req, res, tripId);
+        if (!trip) return;
+        const availability = await UserTripDate.findOne({ tripId: trip._id, userId: String(userId) }).populate('userId', 'name email');
         if (!availability) {
             return res.status(404).json({ message: 'No availability found for this user and trip.' });
         }
@@ -28,8 +43,6 @@ const getUserAvailability = async (req, res) => {
 };
 
 const addOrUpdateAvailability = async (req, res) => {
-    console.log(req.params); // Debug params
-
     const { tripId, userId } = req.params;
     const { availDates } = req.body;
 
@@ -42,25 +55,34 @@ const addOrUpdateAvailability = async (req, res) => {
         return res.status(400).json({ message: 'Invalid or missing availDates.' });
     }
 
+    if (!isSelf(req, res)) return;
+
     try {
+        const trip = await loadTripForMember(req, res, tripId);
+        if (!trip) return;
+
         const updatedAvailability = await UserTripDate.findOneAndUpdate(
-            { tripId, userId },
+            { tripId: trip._id, userId: req.user._id },
             { availDates },
             { new: true, upsert: true } // Create if doesn't exist
         ).populate('userId', 'name email');
 
         res.status(200).json(updatedAvailability);
     } catch (err) {
-        console.error('Error saving availability:', err); // Detailed error log
+        console.error('Error saving availability:', err);
         res.status(500).json({ message: 'Error saving availability', error: err.message });
     }
 };
 
 // Delete a user's availability for a trip
 const deleteAvailability= async (req, res) => {
-    const { tripId, userId } = req.params;
+    const { tripId } = req.params;
+    if (!isSelf(req, res)) return;
     try {
-        const deletedAvailability = await UserTripDate.findOneAndDelete({ tripId, userId });
+        const trip = await loadTripForMember(req, res, tripId);
+        if (!trip) return;
+
+        const deletedAvailability = await UserTripDate.findOneAndDelete({ tripId: trip._id, userId: req.user._id });
         if (!deletedAvailability) {
             return res.status(404).json({ message: 'No availability found to delete.' });
         }

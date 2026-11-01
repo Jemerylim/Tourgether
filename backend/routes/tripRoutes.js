@@ -54,7 +54,7 @@ router.post('/:tripId/accept-invitation', protect, acceptInvitation);
 router.delete('/:tripId/decline-invitation', protect, declineInvitation);
 
 // Check invitation status
-router.get('/:tripId/status', checkInvitationStatus);
+router.get('/:tripId/status', protect, checkInvitationStatus);
 
 // Send invite to trip
 router.post('/:tripId/invite', protect, sendInviteToMember);

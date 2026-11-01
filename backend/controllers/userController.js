@@ -3,13 +3,22 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const crypto = require("crypto");
 const { config } = require('../config/env');
-const { sendMail, clientLink } = require('../utils/mailer');
+const { sendMail, clientLink, escapeHtml } = require('../utils/mailer');
+
+// Emails go straight into Mongo filters, so only plain strings are accepted. An object
+// such as { "$regex": "^a" } would otherwise act as a query operator.
+const cleanEmail = (value) => (typeof value === 'string' ? value.trim() : null);
 
 // Function to handle user registration
 const registerUser = async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, password } = req.body;
+  const email = cleanEmail(req.body.email);
 
   try {
+    if (!email || typeof password !== 'string' || typeof name !== 'string') {
+      return res.status(400).json({ message: "Name, email and password are required" });
+    }
+
     // Check if the user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -46,9 +55,14 @@ const registerUser = async (req, res) => {
 
 // Function to handle user login
 const loginUser = async (req, res) => {
-  const { email, password } = req.body;
+  const { password } = req.body;
+  const email = cleanEmail(req.body.email);
 
   try {
+    if (!email || typeof password !== 'string') {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
     // Find the user by email
     const user = await User.findOne({ email });
     if (!user) {
@@ -96,12 +110,20 @@ const getUserDetails = async (req, res) => {
 
 // Function to update user information
 const updateUser = async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, password, currentPassword } = req.body;
+  const email = req.body.email === undefined ? undefined : cleanEmail(req.body.email);
 
   try {
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
+    }
+
+    // A stolen token alone must not be enough to change how someone signs in
+    if (email || password) {
+      if (typeof currentPassword !== 'string' || !(await bcrypt.compare(currentPassword, user.password))) {
+        return res.status(401).json({ message: 'Enter your current password to change your email or password' });
+      }
     }
 
     // Update user fields if they are provided
@@ -125,13 +147,14 @@ const logoutUser = (req, res) => {
 };
 
 const checkEmail = async (req, res) => {
-  const { email } = req.query; // Assuming the email is passed as a query parameter
-  console.log(email)
+  const email = cleanEmail(req.query.email); // Passed as a query parameter
+  if (!email) {
+    return res.status(400).json({ message: 'An email is required' });
+  }
   try {
     // Check if the email exists in the database
     const user = await User.findOne({ email });
     if (!user) {
-      
       return res.status(404).json({ message: 'Email not registered' });
     }
 
@@ -175,11 +198,10 @@ const lookupUser = async (req, res) => {
 };
 
 const getIdsByEmails = async (req, res) => {
-  const { emails } = req.body; // Fix: Correctly access emails from req.body
-  console.log("Emails received:", emails);
+  const { emails } = req.body;
 
-  if (!emails || !Array.isArray(emails)) {
-    return res.status(400).json({ message: "Emails must be an array." });
+  if (!Array.isArray(emails) || !emails.every((email) => typeof email === 'string')) {
+    return res.status(400).json({ message: "Emails must be an array of strings." });
   }
 
   try {
@@ -206,9 +228,13 @@ const getIdsByEmails = async (req, res) => {
 
 // Function to handle password reset request
 const requestPasswordReset = async (req, res) => {
-  const { email } = req.body;
+  const email = cleanEmail(req.body.email);
 
   try {
+    if (!email) {
+      return res.status(400).json({ message: "Please enter a registered email." });
+    }
+
     // Check if the user exists
     const user = await User.findOne({ email });
     if (!user) {
@@ -231,7 +257,7 @@ const requestPasswordReset = async (req, res) => {
       to: user.email,
       subject: "Password Reset Request",
       html: `
-        <p>Hi ${user.name},</p>
+        <p>Hi ${escapeHtml(user.name)},</p>
         <p>You have requested to reset your password.</p>
         <p>Click the button below to reset your password:</p>
         <a href="${resetURL}" 
@@ -255,10 +281,11 @@ const requestPasswordReset = async (req, res) => {
 
 // Function to handle password reset (AFTER clicking the reset link)
 const resetPassword = async (req, res) => {
-  const { email, token, newPassword } = req.body;
+  const { token, newPassword } = req.body;
+  const email = cleanEmail(req.body.email);
 
   try {
-    if (!email || !token || !newPassword) {
+    if (!email || typeof token !== 'string' || typeof newPassword !== 'string') {
       return res.status(400).json({ message: "Missing required fields." });
     }
 
@@ -320,12 +347,16 @@ const updateProfile = async (req, res) => {
     }
 
     if (req.body.email) {
+      const email = cleanEmail(req.body.email);
+      if (!email) {
+        return res.status(400).json({ message: "Please add a valid email" });
+      }
       // ✅ Check if the new email already exists in the database
-      const existingUser = await User.findOne({ email: req.body.email });
+      const existingUser = await User.findOne({ email });
       if (existingUser && existingUser._id.toString() !== req.user.id) {
         return res.status(400).json({ message: "Email is already in use" });
       }
-      user.email = req.body.email;
+      user.email = email;
     }
 
     // ✅ Ensure bio updates

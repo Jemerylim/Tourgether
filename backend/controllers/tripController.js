@@ -7,7 +7,11 @@ const UserTripDate = require('../models/UserTripDate');
 const Expense = require('../models/Expense');
 const ChecklistItem = require('../models/ChecklistItem');
 const mongoose = require('mongoose');
-const { sendMail, clientLink } = require('../utils/mailer');
+const { sendMail, clientLink, escapeHtml } = require('../utils/mailer');
+const { loadTripForMember } = require('../utils/tripAccess');
+
+// Email subjects must stay on one line
+const oneLine = (text) => String(text).replace(/[\r\n]+/g, ' ');
 
 // Who a trip's members and organiser show up as
 const PEOPLE = 'name email profilePicture';
@@ -20,7 +24,7 @@ exports.createTrip = async (req, res) => {
   const createdBy = req.user._id;
 
   // Members are optional: a trip can be created solo and people invited later.
-  if (!name) {
+  if (!name || typeof name !== 'string') {
     return res.status(400).json({ message: 'A trip name is required' });
   }
   if (!Array.isArray(members)) {
@@ -52,10 +56,10 @@ exports.createTrip = async (req, res) => {
     const emailPromises = validMembers.map((member) => {
       const mailOptions = {
         to: member.email,
-        subject: `Invitation to join the trip "${name}"`,
+        subject: `Invitation to join the trip "${oneLine(name)}"`,
         html: `
-          <p>Hi ${member.name},</p>
-          <p>You have been invited to join the trip "<strong>${name}</strong>".</p>
+          <p>Hi ${escapeHtml(member.name)},</p>
+          <p>You have been invited to join the trip "<strong>${escapeHtml(name)}</strong>".</p>
           <p>Visit your dashboard to see more details or <a href="${invitationLink(trip._id, member._id)}">accept the invitation here</a>.</p>
           <p>Regards,<br>The Tourgether Team</p>
         `,
@@ -78,10 +82,10 @@ exports.createTrip = async (req, res) => {
   }
 };
 
-// Get all trips
+// Get the trips the signed-in user organises or belongs to
 exports.getTrips = async (req, res) => {
   try {
-    const trips = await Trip.find()
+    const trips = await Trip.find({ $or: [{ createdBy: req.user._id }, { members: req.user._id }] })
       .populate('members', PEOPLE)
       .populate('createdBy', PEOPLE);
     res.status(200).json({ success: true, data: trips });
@@ -91,16 +95,16 @@ exports.getTrips = async (req, res) => {
   }
 };
 
-// Get a single trip by ID
+// Get a single trip by ID (members only)
 exports.getTrip = async (req, res) => {
   const { id } = req.params;
   try {
-    const trip = await Trip.findById(id)
-      .populate('members', PEOPLE)
-      .populate('createdBy', PEOPLE);
-    if (!trip) {
-      return res.status(404).json({ success: false, message: 'Trip not found' });
-    }
+    const trip = await loadTripForMember(req, res, id);
+    if (!trip) return;
+    await trip.populate([
+      { path: 'members', select: PEOPLE },
+      { path: 'createdBy', select: PEOPLE },
+    ]);
     res.status(200).json({ success: true, data: trip });
   } catch (error) {
     console.error('Error fetching trip:', error);
@@ -108,19 +112,27 @@ exports.getTrip = async (req, res) => {
   }
 };
 
-// Update a trip
+// Update a trip (organiser only). Membership never changes here: it goes through
+// invitations, invite links and removeMember.
 exports.updateTrip = async (req, res) => {
   const { id } = req.params;
-  const { name, members, description, startDate, endDate } = req.body;
   try {
-    const trip = await Trip.findByIdAndUpdate(
-      id,
-      { name, members, description, startDate, endDate },
-      { new: true, runValidators: true }
-    ).populate('members', PEOPLE).populate('createdBy', PEOPLE);
-    if (!trip) {
+    const found = await Trip.findById(id);
+    if (!found) {
       return res.status(404).json({ success: false, message: 'Trip not found' });
     }
+    if (!found.createdBy.equals(req.user._id)) {
+      return res.status(403).json({ success: false, message: 'Only the trip organiser can edit this trip' });
+    }
+
+    const updates = {};
+    ['name', 'description', 'startDate', 'endDate'].forEach((field) => {
+      if (req.body[field] !== undefined) updates[field] = req.body[field];
+    });
+
+    const trip = await Trip.findByIdAndUpdate(id, { $set: updates }, { new: true, runValidators: true })
+      .populate('members', PEOPLE)
+      .populate('createdBy', PEOPLE);
     res.status(200).json({ success: true, data: trip });
   } catch (error) {
     console.error('Error updating trip:', error);
@@ -254,12 +266,12 @@ exports.declineInvitation = async (req, res) => {
 // Check invitation status
 exports.checkInvitationStatus = async (req, res) => {
   const { tripId } = req.params;
-  const { userId } = req.query;
   try {
     const trip = await Trip.findById(tripId);
     if (!trip) return res.status(404).json({ message: 'Trip not found.' });
 
-    const invitation = trip.sentInvitations.find((inv) => inv.userId.equals(userId));
+    // Only the signed-in user's own invitation
+    const invitation = trip.sentInvitations.find((inv) => inv.userId.equals(req.user._id));
     if (!invitation) return res.status(404).json({ status: 'not-invited' });
 
     res.status(200).json({ status: invitation.status });
@@ -274,7 +286,7 @@ exports.sendInviteToMember = async (req, res) => {
   const { tripId } = req.params;
   const { email } = req.body;
 
-  if (!email) return res.status(400).json({ message: 'Email is required.' });
+  if (!email || typeof email !== 'string') return res.status(400).json({ message: 'Email is required.' });
 
   try {
     const trip = await Trip.findById(tripId);
@@ -295,10 +307,10 @@ exports.sendInviteToMember = async (req, res) => {
 
     const mailOptions = {
       to: user.email,
-      subject: `Invitation to join the trip "${trip.name}"`,
+      subject: `Invitation to join the trip "${oneLine(trip.name)}"`,
       html: `
-        <p>Hi ${user.name},</p>
-        <p>You have been invited to join the trip "<strong>${trip.name}</strong>".</p>
+        <p>Hi ${escapeHtml(user.name)},</p>
+        <p>You have been invited to join the trip "<strong>${escapeHtml(trip.name)}</strong>".</p>
         <p>Visit your dashboard to see more details or <a href="${invitationLink(trip._id, user._id)}">accept the invitation here</a>.</p>
         <p>Regards,<br>The Tourgether Team</p>
       `,
