@@ -1,23 +1,14 @@
 const express = require('express');
+const { createTrip, getTrips, getTrip, updateTrip, deleteTrip, getMyTrips } = require('../controllers/trip/tripController');
+const { acceptInvitation, declineInvitation, checkInvitationStatus, sendInviteToMember } = require('../controllers/trip/invitationController');
+const { removeMember, setMemberRole } = require('../controllers/trip/memberController');
 const {
-  createTrip,
-  getTrips,
-  getTrip,
-  updateTrip,
-  deleteTrip,
-  getMyTrips,
-  acceptInvitation,
-  declineInvitation,
-  checkInvitationStatus,
-  sendInviteToMember,
-  removeMember,
-  setMemberRole,
   getInviteLink,
   createInviteLink,
   disableInviteLink,
   previewInviteLink,
   joinWithInviteLink,
-} = require('../controllers/tripController');
+} = require('../controllers/trip/inviteLinkController');
 const { protect } = require('../middlewares/authMiddleware');
 
 const router = express.Router();

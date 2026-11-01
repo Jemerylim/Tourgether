@@ -2,20 +2,13 @@ const express = require('express');
 const {
   registerUser,
   loginUser,
-  getUserDetails,
-  updateUser,
   logoutUser,
-  checkEmail,
-  lookupUser,
-  getIdsByEmails,
   requestPasswordReset,
   resetPassword,
-  updateProfile,
-  changeEmail,
-  changePassword,
-  deleteAccount,
-  getUserById
-} = require('../controllers/userController');
+} = require('../controllers/user/authController');
+const { getUserDetails, updateUser, updateProfile } = require('../controllers/user/profileController');
+const { changeEmail, changePassword, deleteAccount } = require('../controllers/user/accountController');
+const { checkEmail, lookupUser, getIdsByEmails, getUserById } = require('../controllers/user/lookupController');
 const { protect } = require('../middlewares/authMiddleware');
 const { uploadProfilePicture } = require('../middlewares/upload');
 
