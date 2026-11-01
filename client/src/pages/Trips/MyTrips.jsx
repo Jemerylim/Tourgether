@@ -4,6 +4,7 @@ import axios from "axios";
 import { Plane, Plus } from "lucide-react";
 import Card from "../../components/Cards/Card";
 import ConfirmDialog from "../../components/Modal/ConfirmDialog";
+import NewTripTile from "../../components/NewTripTile/NewTripTile";
 import PageLayout from "../../components/PageLayout/PageLayout";
 import { EmptyState, ErrorState, LoadingState } from "../../components/PageState/PageState";
 import { useToast } from "../../components/Toast/Toast";
@@ -80,7 +81,10 @@ const MyTrips = () => {
             Upcoming
           </h2>
           {upcoming.length > 0 ? (
-            <div className="grid gap-8 xl:grid-cols-2">{upcoming.map((trip) => tripCard(trip))}</div>
+            <div className="grid gap-8 xl:grid-cols-2">
+              {upcoming.map((trip) => tripCard(trip))}
+              <NewTripTile state={fromHere(location, "My trips")} />
+            </div>
           ) : (
             <p className="text-ink-soft">
               No upcoming trips.{" "}

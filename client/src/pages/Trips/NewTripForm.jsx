@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
+import dayjs from "dayjs";
+import { Plane } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Ticket from "../../components/Ticket/Ticket";
 import PageLayout from "../../components/PageLayout/PageLayout";
@@ -8,6 +10,8 @@ import EmailChipsInput from "../../components/EmailChipsInput/EmailChipsInput";
 import { useToast } from "../../components/Toast/Toast";
 import { API_URL } from "../../config";
 import { apiErrorMessage } from "../../lib/apiError";
+import { coverPhoto } from "../../lib/trips";
+import { fireConfetti } from "../../lib/confetti";
 
 const formatShort = (key) =>
   new Date(`${key}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short" });
@@ -26,6 +30,24 @@ const CreateTrip = () => {
   // Leave the dates open: the group marks the days they're free and the organiser locks
   // the best ones from the trip's "Find dates" section.
   const [pickLater, setPickLater] = useState(false);
+  // Destination photo for the trip name being typed, the same one its ticket will show
+  const [preview, setPreview] = useState();
+
+  useEffect(() => {
+    const name = groupName.trim();
+    setPreview(undefined);
+    if (name.length < 3) return undefined;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      coverPhoto(name, `cover:draft:${name.toLowerCase()}`).then((url) => {
+        if (!cancelled) setPreview(url);
+      });
+    }, 600);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [groupName]);
 
   // Look up an invited person by email or by name. Returns a message to reject them (not
   // registered, ambiguous name, yourself) or `{ email }` with their real email address.
@@ -114,6 +136,7 @@ const CreateTrip = () => {
       if (tripResponse.data.emailsFailed > 0) {
         showToast("Trip created, but the invitation emails couldn't be sent. Let your group know it's ready.", "info");
       }
+      fireConfetti();
       // Replace the form in history, and hand on where it was opened from, so the new
       // trip's back link (and the browser's Back) skip the finished form.
       navigate(`/trip/${tripResponse.data.data._id}`, {
@@ -134,7 +157,7 @@ const CreateTrip = () => {
       value: pickLater
         ? "To be decided"
         : startDate && endDate
-          ? `${formatShort(startDate)} to ${formatShort(endDate)}`
+          ? `${formatShort(startDate)} to ${formatShort(endDate)} · ${dayjs(endDate).diff(startDate, "day") + 1} days`
           : "Not picked yet",
     },
     {
@@ -225,9 +248,16 @@ const CreateTrip = () => {
               />
             </form>
           }
-          stubClassName="flex flex-col justify-between gap-8 bg-mustard p-6 sm:w-72 sm:p-8"
+          stubClassName="flex flex-col justify-between gap-6 bg-mustard p-6 sm:w-72 sm:p-8"
           stub={
             <>
+              <div className="relative -mx-1 -mt-1 flex h-32 items-center justify-center overflow-hidden rounded-2xl bg-white/40 text-ink">
+                {preview ? (
+                  <img src={preview} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                ) : (
+                  <Plane size={32} aria-hidden="true" />
+                )}
+              </div>
               <dl className="space-y-4">
                 {summary.map(({ label, value }) => (
                   <div key={label}>

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useLocation, useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import dayjs from "dayjs";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, StickyNote } from "lucide-react";
 import PageLayout from "../../components/PageLayout/PageLayout";
 import SaveIndicator from "../../components/SaveIndicator/SaveIndicator";
 import ConfirmDialog from "../../components/Modal/ConfirmDialog";
@@ -21,6 +21,7 @@ const AllEvents = () => {
   const [trip, setTrip] = useState(null);
   const [error, setError] = useState("");
   const [eventToDelete, setEventToDelete] = useState(null);
+  const [openNotes, setOpenNotes] = useState({}); // events whose empty notes box was opened
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -148,19 +149,26 @@ const AllEvents = () => {
   } else {
     content = (
       <div className="space-y-12">
-        {days.map((date) => (
+        {days.map((date, dayIndex) => (
           <section key={date} aria-labelledby={`day-${date}`}>
-            <h2 id={`day-${date}`} className="mb-5 font-display text-2xl text-ink">
+            <h2 id={`day-${date}`} className="mb-5 flex flex-wrap items-center gap-3 font-display text-2xl text-ink">
+              <span className="rounded-xl bg-ink px-3 py-1 text-lg text-mustard">
+                Day {trip.startDate ? dayjs(date).diff(dayjs(trip.startDate).startOf("day"), "day") + 1 : dayIndex + 1}
+              </span>
               {dayjs(date).format("dddd, D MMMM")}
             </h2>
-            <ul className="space-y-4">
+            <ul className="ml-3 space-y-4 border-l-2 border-dashed border-ink/20 pl-6">
               {[...events[date]]
                 .sort((a, b) => a.startTime.localeCompare(b.startTime))
                 .map((event) => (
                   <li
                     key={event.id}
-                    className="grid gap-4 rounded-2xl bg-white p-5 drop-shadow-ticket sm:grid-cols-[9rem_1fr]"
+                    className="relative grid gap-4 rounded-2xl bg-white p-5 drop-shadow-ticket sm:grid-cols-[9rem_1fr]"
                   >
+                    <span
+                      aria-hidden="true"
+                      className="absolute -left-[31px] top-7 h-3 w-3 rounded-full bg-mustard ring-4 ring-paper"
+                    />
                     <p className="font-extrabold text-ink">
                       {event.startTime} to {event.endTime}
                     </p>
@@ -177,23 +185,40 @@ const AllEvents = () => {
                           </button>
                         )}
                       </div>
-                      <label htmlFor={`notes-${event.id}`} className="field-label mt-3">
-                        Notes
-                      </label>
-                      <textarea
-                        id={`notes-${event.id}`}
-                        className="field min-h-[5.5rem] resize-y"
-                        placeholder={canEdit ? "Add notes, links, who's bringing what..." : "No notes"}
-                        readOnly={!canEdit}
-                        value={notesState[event.id] || ""}
-                        onChange={(e) => handleNotesChange(event.id, e.target.value)}
-                        // Auto-save when the user clicks away
-                        onBlur={() => handleSaveNotes(event.id)}
-                      />
-                      <SaveIndicator
-                        status={saveStatus[event.id] || "idle"}
-                        onRetry={() => handleSaveNotes(event.id)}
-                      />
+                      {/* Notes stay out of the way until an event has some, or someone wants to add one */}
+                      {(notesState[event.id] || openNotes[event.id]) ? (
+                        <>
+                          <label htmlFor={`notes-${event.id}`} className="field-label mt-3">
+                            Notes
+                          </label>
+                          <textarea
+                            id={`notes-${event.id}`}
+                            className="field min-h-[5.5rem] resize-y"
+                            placeholder="Add notes, links, who's bringing what..."
+                            readOnly={!canEdit}
+                            autoFocus={Boolean(openNotes[event.id]) && !notesState[event.id]}
+                            value={notesState[event.id] || ""}
+                            onChange={(e) => handleNotesChange(event.id, e.target.value)}
+                            // Auto-save when the user clicks away
+                            onBlur={() => handleSaveNotes(event.id)}
+                          />
+                          <SaveIndicator
+                            status={saveStatus[event.id] || "idle"}
+                            onRetry={() => handleSaveNotes(event.id)}
+                          />
+                        </>
+                      ) : (
+                        canEdit && (
+                          <button
+                            type="button"
+                            className="btn-ghost -ml-3 mt-1 !px-3 !py-1.5"
+                            onClick={() => setOpenNotes((prev) => ({ ...prev, [event.id]: true }))}
+                          >
+                            <StickyNote size={16} aria-hidden="true" />
+                            Add a note
+                          </button>
+                        )
+                      )}
                     </div>
                   </li>
                 ))}

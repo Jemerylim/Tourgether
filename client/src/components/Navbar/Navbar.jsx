@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { LogOut, Map, User } from "lucide-react";
+import { LogOut, Map, Settings, User } from "lucide-react";
 import logo from "../../assets/Tourgether-Logo.png";
 
 const navLinkClass = ({ isActive }) =>
@@ -52,6 +52,10 @@ const Navbar = ({ overlay = false }) => {
               <NavLink to="/profile" className={navLinkClass}>
                 <User size={16} aria-hidden="true" />
                 <span className="hidden sm:inline">Profile</span>
+              </NavLink>
+              <NavLink to="/settings" className={navLinkClass} aria-label="Settings">
+                <Settings size={16} aria-hidden="true" />
+                <span className="hidden lg:inline">Settings</span>
               </NavLink>
               <button onClick={handleLogout} className="btn-dark ml-1">
                 <LogOut size={16} aria-hidden="true" />

@@ -5,6 +5,8 @@ import { ArrowLeftRight, ArrowRight, Download, Pencil, Plus, RotateCcw, Search, 
 import Avatar from "../../components/Avatar/Avatar";
 import Modal from "../../components/Modal/Modal";
 import ConfirmDialog from "../../components/Modal/ConfirmDialog";
+import { EmptyState } from "../../components/PageState/PageState";
+import QuickStart from "../../components/PageState/QuickStart";
 import { useToast } from "../../components/Toast/Toast";
 import { API_URL, assetUrl } from "../../config";
 import { apiErrorMessage } from "../../lib/apiError";
@@ -112,10 +114,12 @@ const TripExpenses = ({ trip, members, userId, isOrganiser }) => {
     setViewing(null);
   };
 
-  const openNew = () => {
+  // `description` pre-fills the title, for the suggestion chips on the empty state
+  const openNew = (description = "") => {
     setFormError("");
     setViewing(null);
-    setForm(formFor(null, { userId, members, currency: expenses[0]?.currency || baseCurrency || "USD" }));
+    const blank = formFor(null, { userId, members, currency: expenses[0]?.currency || baseCurrency || "USD" });
+    setForm(typeof description === "string" && description ? { ...blank, description } : blank);
   };
 
   const openExpense = (expense) => {
@@ -378,11 +382,17 @@ const TripExpenses = ({ trip, members, userId, isOrganiser }) => {
       {loading ? (
         <p className="text-ink-soft">Loading expenses...</p>
       ) : expenses.length === 0 && deleted.length === 0 ? (
-        <div className="rounded-3xl border-2 border-dashed border-ink/15 p-8 text-center">
-          <Wallet size={28} className="mx-auto text-ink-soft" aria-hidden="true" />
-          <p className="mt-2 font-bold text-ink">No expenses yet</p>
-          <p className="mt-1 text-sm text-ink-soft">Add the first one, like the hotel deposit or tonight's dinner.</p>
-        </div>
+        <EmptyState
+          icon={Wallet}
+          title="No expenses yet"
+          text="Log the first one, like the hotel deposit or tonight's dinner, and Tourgether will keep track of who owes whom."
+        >
+          <QuickStart
+            label="Common first expenses"
+            suggestions={["Hotel deposit", "Flights", "Groceries", "Taxi", "Dinner"]}
+            onPick={(description) => openNew(description)}
+          />
+        </EmptyState>
       ) : (
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
           {/* Settle up, one card per currency */}

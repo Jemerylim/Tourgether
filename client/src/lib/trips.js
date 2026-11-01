@@ -12,7 +12,9 @@ const startOfDay = (date) => {
 
 const daysBetween = (from, to) => Math.round((startOfDay(to) - startOfDay(from)) / DAY_MS);
 
-export const formatDate = (date) => (date ? new Date(date).toLocaleDateString() : "TBD");
+// "28 Mar 2027" everywhere, so dates read the same whatever the visitor's locale
+export const formatDate = (date) =>
+  date ? new Date(date).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "TBD";
 
 export const isPast = (trip) => Boolean(trip.endDate) && daysBetween(new Date(), trip.endDate) < 0;
 

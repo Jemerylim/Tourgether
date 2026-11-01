@@ -22,7 +22,7 @@ export const ErrorState = ({ message, onRetry }) => (
 
 // `action` is a ready-made button or link; `secondary` an optional second one;
 // `image` is an illustration that stands on the card's bottom edge on wider screens.
-export const EmptyState = ({ icon: Icon, title, text, action, secondary, image }) => (
+export const EmptyState = ({ icon: Icon, title, text, action, secondary, image, children }) => (
   <div className="relative overflow-hidden rounded-3xl bg-white p-8 drop-shadow-ticket sm:p-12">
     <div className="relative z-10 flex flex-col items-start sm:max-w-[55%]">
       {Icon && (
@@ -38,6 +38,7 @@ export const EmptyState = ({ icon: Icon, title, text, action, secondary, image }
           {secondary}
         </div>
       )}
+      {children}
     </div>
     {image && (
       <img

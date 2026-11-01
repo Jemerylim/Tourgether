@@ -10,7 +10,10 @@ const {
   getIdsByEmails,
   requestPasswordReset,
   resetPassword,
-  updateProfile
+  updateProfile,
+  changeEmail,
+  changePassword,
+  deleteAccount
 } = require('../controllers/userController');
 const { protect } = require('../middlewares/authMiddleware');
 const multer = require("multer");
@@ -87,6 +90,11 @@ router.post("/forgot-password", requestPasswordReset);
 
 // Route to reset password (after clicking email link)
 router.post("/reset-password", resetPassword);
+
+// Account changes that ask for the current password (protected)
+router.put('/email', protect, changeEmail);
+router.put('/password', protect, changePassword);
+router.delete('/me', protect, deleteAccount);
 
 // Route to update profile picture and bio (protected)
 router.put("/update-profile", protect, uploadProfilePicture, updateProfile);

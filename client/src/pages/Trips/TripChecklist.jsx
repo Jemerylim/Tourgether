@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { Backpack, ListTodo, Plus, User, Users, X } from "lucide-react";
 import Avatar from "../../components/Avatar/Avatar";
 import { useToast } from "../../components/Toast/Toast";
+import QuickStart from "../../components/PageState/QuickStart";
+import { fireConfetti } from "../../lib/confetti";
 import { API_URL, assetUrl } from "../../config";
 import { apiErrorMessage } from "../../lib/apiError";
 import { cn } from "../../lib/utils";
@@ -15,6 +17,7 @@ const LISTS = [
     placeholder: "Bluetooth speaker",
     defaultKind: "personal",
     doneWord: "packed",
+    suggestions: ["Passport", "Phone charger", "Power adapter", "Sunscreen", "Toiletries", "Medication"],
     claim: "I'll bring it",
     ownerLine: (name, isMe) => (isMe ? "You're bringing it" : `${name} is bringing it`),
   },
@@ -25,6 +28,7 @@ const LISTS = [
     placeholder: "Book the ferry tickets",
     defaultKind: "shared",
     doneWord: "done",
+    suggestions: ["Book flights", "Book accommodation", "Buy travel insurance", "Exchange currency"],
     claim: "I'll do it",
     ownerLine: (name, isMe) => (isMe ? "You're on it" : `${name} is on it`),
   },
@@ -61,12 +65,45 @@ const CheckCircle = ({ on }) => (
   </span>
 );
 
+// Circular progress, drawn with a stroke-dasharray on an SVG circle
+const ProgressRing = ({ share, label }) => {
+  const radius = 15;
+  const circumference = 2 * Math.PI * radius;
+  return (
+    <span className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center" role="img" aria-label={label}>
+      <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90" aria-hidden="true">
+        <circle cx="18" cy="18" r={radius} fill="none" strokeWidth="4" className="stroke-lagoon-light" />
+        <circle
+          cx="18"
+          cy="18"
+          r={radius}
+          fill="none"
+          strokeWidth="4"
+          strokeLinecap="round"
+          className={cn("transition-[stroke-dashoffset] duration-500 ease-out motion-reduce:transition-none", share === 1 ? "stroke-mustard" : "stroke-lagoon")}
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference * (1 - share)}
+        />
+      </svg>
+      <span className="absolute text-[10px] font-extrabold tabular-nums text-ink">{Math.round(share * 100)}%</span>
+    </span>
+  );
+};
+
 const ChecklistCard = ({ list, items, members, userId, isOrganiser, onAdd, onToggle, onAssign, onDelete }) => {
   const [text, setText] = useState("");
   const [kind, setKind] = useState(list.defaultKind);
   const Icon = list.icon;
   const doneCount = items.filter((item) => isDoneFor(item, userId)).length;
   const share = items.length ? doneCount / items.length : 0;
+
+  // A little celebration the moment the last item gets ticked, not when the list loads full
+  const wasComplete = useRef(share === 1 && items.length > 0);
+  useEffect(() => {
+    const complete = items.length > 0 && share === 1;
+    if (complete && !wasComplete.current) fireConfetti({ count: 36 });
+    wasComplete.current = complete;
+  }, [share, items.length]);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -82,17 +119,18 @@ const ChecklistCard = ({ list, items, members, userId, isOrganiser, onAdd, onTog
         <span className="text-sm font-extrabold tabular-nums text-ink-soft">
           {doneCount} / {items.length} {list.doneWord}
         </span>
-      </div>
-
-      <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-lagoon-light" aria-hidden="true">
-        <div
-          className="h-full origin-left rounded-full bg-lagoon transition-transform duration-500 ease-out motion-reduce:transition-none"
-          style={{ transform: `scaleX(${share})` }}
-        />
+        <ProgressRing share={share} label={`${doneCount} of ${items.length} ${list.doneWord}`} />
       </div>
 
       {items.length === 0 ? (
-        <p className="mt-4 text-sm text-ink-soft">Nothing here yet. Add the first item below.</p>
+        <div className="mt-4">
+          <p className="text-sm text-ink-soft">Nothing here yet. Add the first item below, or tap one of these.</p>
+          <QuickStart
+            label="Quick add"
+            suggestions={list.suggestions}
+            onPick={(text) => onAdd({ text, list: list.value, kind: list.defaultKind })}
+          />
+        </div>
       ) : (
         <ul className="mt-3">
           {items.map((item) => {
@@ -185,7 +223,13 @@ const ChecklistCard = ({ list, items, members, userId, isOrganiser, onAdd, onTog
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
-          <button type="submit" className="btn-dark shrink-0 px-4" disabled={!text.trim()} aria-label={`Add to ${list.title}`}>
+          <button
+            type="submit"
+            className="btn-dark shrink-0 px-4"
+            disabled={!text.trim()}
+            aria-label={`Add to ${list.title}`}
+            title={text.trim() ? undefined : "Type an item first"}
+          >
             <Plus size={18} aria-hidden="true" />
           </button>
         </div>

@@ -6,6 +6,10 @@ import Avatar from "../../components/Avatar/Avatar";
 import Modal from "../../components/Modal/Modal";
 import ConfirmDialog from "../../components/Modal/ConfirmDialog";
 import TimePicker from "../../components/TimePicker/TimePicker";
+import DatePicker from "../../components/DatePicker/DatePicker";
+import { EmptyState } from "../../components/PageState/PageState";
+import QuickStart from "../../components/PageState/QuickStart";
+import { fireConfetti } from "../../lib/confetti";
 import { useToast } from "../../components/Toast/Toast";
 import { API_URL, assetUrl } from "../../config";
 import { apiErrorMessage } from "../../lib/apiError";
@@ -28,8 +32,8 @@ const SlotFields = ({ idPrefix, slot, onChange, min, max }) => (
   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
     <div>
       <label htmlFor={`${idPrefix}-date`} className="field-label">Date</label>
-      <input id={`${idPrefix}-date`} type="date" className="field" value={slot.date} min={min} max={max}
-        onChange={(e) => onChange({ date: e.target.value })} />
+      <DatePicker id={`${idPrefix}-date`} placement="top" value={slot.date} min={min || undefined} max={max || undefined}
+        onChange={(date) => onChange({ date })} />
     </div>
     <div>
       <label htmlFor={`${idPrefix}-start`} className="field-label">Starts</label>
@@ -307,6 +311,7 @@ const TripPolls = ({ trip, userId, isOrganiser, onEventCreated }) => {
       replacePoll(data.data.poll);
       if (data.data.event) onEventCreated(data.data.event);
       setClosing(null);
+      fireConfetti();
       showToast(data.data.event ? "Poll closed and added to the calendar" : "Poll closed", "success");
     } catch (error) {
       setFormError(apiErrorMessage(error, "Couldn't close the poll"));
@@ -347,10 +352,26 @@ const TripPolls = ({ trip, userId, isOrganiser, onEventCreated }) => {
       {loading ? (
         <p className="text-ink-soft">Loading polls...</p>
       ) : polls.length === 0 ? (
-        <div className="rounded-3xl border-2 border-dashed border-ink/15 p-8 text-center">
-          <p className="font-bold text-ink">No polls yet</p>
-          <p className="mt-1 text-sm text-ink-soft">Ask the group something like "Which restaurant on night 2?"</p>
-        </div>
+        <EmptyState
+          icon={Vote}
+          title="No polls yet"
+          text='Ask the group something like "Which restaurant on night 2?" and let the votes decide.'
+          action={
+            <button type="button" className="btn-primary" onClick={() => setCreating(true)}>
+              <Vote size={18} aria-hidden="true" />
+              Start a poll
+            </button>
+          }
+        >
+          <QuickStart
+            label="Or start from a question"
+            suggestions={["Where should we eat tonight?", "Beach day or city day?", "What time do we meet?"]}
+            onPick={(question) => {
+              setDraft({ ...emptyDraft, question });
+              setCreating(true);
+            }}
+          />
+        </EmptyState>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {polls.map((poll) => (
@@ -369,7 +390,7 @@ const TripPolls = ({ trip, userId, isOrganiser, onEventCreated }) => {
       )}
 
       {/* New poll */}
-      <Modal open={creating} onClose={closeCreateForm} title="New poll" className="max-w-lg">
+      <Modal open={creating} onClose={closeCreateForm} title="New poll" className="max-w-lg overflow-visible">
         <form onSubmit={handleCreate} className="space-y-4" noValidate>
           <div>
             <label htmlFor="poll-question" className="field-label">Question</label>
@@ -436,7 +457,7 @@ const TripPolls = ({ trip, userId, isOrganiser, onEventCreated }) => {
       </Modal>
 
       {/* Close poll */}
-      <Modal open={Boolean(closing)} onClose={() => setClosing(null)} title="Close poll" className="max-w-lg">
+      <Modal open={Boolean(closing)} onClose={() => setClosing(null)} title="Close poll" className="max-w-lg overflow-visible">
         {closing && (
           <form onSubmit={handleClose} className="space-y-4" noValidate>
             <fieldset>

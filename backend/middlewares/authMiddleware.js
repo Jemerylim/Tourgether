@@ -17,7 +17,7 @@ const protect = async (req, res, next) => {
   }
 
   // A valid token for a deleted account
-  if (!req.user) {
+  if (!req.user || req.user.deletedAt) {
     return res.status(401).json({ message: 'Not authorized, user not found' });
   }
 

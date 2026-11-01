@@ -39,12 +39,30 @@ export default {
           "0%": { transform: "translateX(-100%)" },
           "100%": { transform: "translateX(0)" },
         },
+        drift: {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(28px)" },
+        },
+        stamp: {
+          "0%": { transform: "scale(2.2) rotate(-14deg)", opacity: "0" },
+          "55%": { transform: "scale(0.92) rotate(-6deg)", opacity: "1" },
+          "100%": { transform: "scale(1) rotate(-6deg)", opacity: "1" },
+        },
+        pop: {
+          "0%": { transform: "scale(0.6)", opacity: "0" },
+          "70%": { transform: "scale(1.08)" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
         flip: {
           "0%": { transform: "rotateX(-90deg)", opacity: "0" },
           "100%": { transform: "rotateX(0deg)", opacity: "1" },
         },
       },
       animation: {
+        drift: "drift 16s ease-in-out infinite alternate",
+        "drift-slow": "drift 26s ease-in-out infinite alternate",
+        stamp: "stamp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both",
+        pop: "pop 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both",
         flip: "flip 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both",
         "toast-in": "toast-in 0.2s ease-out both",
         "fade-in": "fade-in 0.2s ease-out both",

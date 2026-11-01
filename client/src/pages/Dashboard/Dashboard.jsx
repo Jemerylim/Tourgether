@@ -1,11 +1,12 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
-import { CalendarDays, Clock, Plane, Plus } from "lucide-react";
+import { CalendarDays, Check, Clock, Plane, Plus } from "lucide-react";
 import Card from "../../components/Cards/Card";
 import AvatarStack from "../../components/Avatar/AvatarStack";
 import Progress from "../../components/Progress/Progress";
 import PageLayout from "../../components/PageLayout/PageLayout";
+import NewTripTile from "../../components/NewTripTile/NewTripTile";
 import { EmptyState, ErrorState, LoadingState } from "../../components/PageState/PageState";
 import registerImage from "../../assets/Register.png";
 import useUserTrips from "../../lib/useUserTrips";
@@ -76,6 +77,75 @@ const TripDetails = ({ trip, userId, events, checklist, showNext }) => {
         </p>
       )}
     </div>
+  );
+};
+
+const Stat = ({ value, label }) => (
+  <div className="rounded-2xl bg-white p-4 drop-shadow-ticket sm:p-5">
+    <p className="font-display text-3xl leading-none text-ink sm:text-4xl">{value}</p>
+    <p className="mt-2 text-sm font-bold text-ink-soft">{label}</p>
+  </div>
+);
+
+// Three numbers about the next trip, for the space under its ticket
+const TripGlance = ({ trip, userId, events, checklist }) => {
+  const daysToGo = trip.startDate ? dayjs(trip.startDate).startOf("day").diff(dayjs().startOf("day"), "day") : null;
+  const progress = checklist && checklistProgress(checklist, userId);
+  return (
+    <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-5">
+      <Stat value={daysToGo === null ? "TBD" : Math.max(daysToGo, 0)} label={daysToGo === 1 ? "day to go" : "days to go"} />
+      <Stat value={events ? events.length : "-"} label={events?.length === 1 ? "event planned" : "events planned"} />
+      <Stat value={progress ? `${Math.round((progress.done / progress.total) * 100)}%` : "0%"} label={progress?.word === "done" ? "to-dos done" : "packed"} />
+    </div>
+  );
+};
+
+// The first few things worth doing on a new trip, ticked off as the group does them.
+// Gone once they're all done.
+const SetupCard = ({ trip, events, checklist }) => {
+  const location = useLocation();
+  if (!events || !checklist) return null;
+  const steps = [
+    { label: "Lock in the dates", done: Boolean(trip.startDate && trip.endDate), to: `/trip/${trip._id}?section=dates` },
+    { label: "Invite your travel group", done: peopleOn(trip).length > 1, to: `/trip/${trip._id}?section=calendar` },
+    { label: "Add the first event", done: events.length > 0, to: `/trip/${trip._id}?section=calendar` },
+    { label: "Start a packing list", done: checklist.length > 0, to: `/trip/${trip._id}?section=lists` },
+  ];
+  const finished = steps.filter((step) => step.done).length;
+  if (finished === steps.length) return null;
+
+  return (
+    <section className="rounded-3xl bg-white p-6 drop-shadow-ticket" aria-labelledby="setup-heading">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 id="setup-heading" className="font-display text-2xl text-ink">
+          Get {trip.name} ready
+        </h2>
+        <span className="shrink-0 text-sm font-extrabold text-ink-soft">
+          {finished} of {steps.length}
+        </span>
+      </div>
+      <Progress value={finished} max={steps.length} label={`${finished} of ${steps.length} steps done`} className="mt-3" />
+      <ul className="mt-4 space-y-1">
+        {steps.map((step) => (
+          <li key={step.label}>
+            <Link
+              to={step.to}
+              state={fromHere(location, "Dashboard")}
+              className="group -mx-2 flex items-center gap-3 rounded-xl px-2 py-2 font-bold text-ink no-underline hover:bg-lagoon-light/60"
+            >
+              <span
+                className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                  step.done ? "bg-lagoon text-white" : "border-2 border-ink/25"
+                }`}
+              >
+                {step.done && <Check size={14} aria-hidden="true" />}
+              </span>
+              <span className={step.done ? "text-ink-soft line-through" : ""}>{step.label}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 };
 
@@ -229,12 +299,29 @@ const Dashboard = () => {
           next,
           <TripDetails trip={next} userId={userId} events={events} checklist={checklist} showNext={!live} />
         )}
-        {live && <TodayPanels trip={next} userId={userId} events={events} expenses={expenses} />}
+        {live ? (
+          <TodayPanels trip={next} userId={userId} events={events} expenses={expenses} />
+        ) : (
+          <TripGlance trip={next} userId={userId} events={events} checklist={checklist} />
+        )}
+
+        {others.length === 0 && (
+          <div className="mt-8 grid items-start gap-6 md:grid-cols-2">
+            <SetupCard trip={next} events={events} checklist={checklist} />
+            <NewTripTile state={fromHere(location, "Dashboard")} className="h-full" />
+          </div>
+        )}
 
         {others.length > 0 && (
           <>
+            <div className="mt-8">
+              <SetupCard trip={next} events={events} checklist={checklist} />
+            </div>
             <h2 className="mb-6 mt-14 font-display text-2xl text-ink">Also coming up</h2>
-            <div className="grid gap-8 xl:grid-cols-2">{others.map((trip) => tripCard(trip))}</div>
+            <div className="grid gap-8 xl:grid-cols-2">
+              {others.map((trip) => tripCard(trip))}
+              <NewTripTile state={fromHere(location, "Dashboard")} />
+            </div>
           </>
         )}
 

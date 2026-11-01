@@ -6,6 +6,7 @@ import axios from "axios";
 import dayjs from "dayjs";
 import { CalendarCheck, ChevronLeft, ChevronRight, Lock, LockOpen, Pencil } from "lucide-react";
 import DateRangePicker from "../../components/DateRangePicker/DateRangePicker";
+import { fireConfetti } from "../../lib/confetti";
 import ConfirmDialog from "../../components/Modal/ConfirmDialog";
 import { useToast } from "../../components/Toast/Toast";
 import { API_URL } from "../../config";
@@ -223,6 +224,7 @@ const TripDates = ({ trip, userId, isOrganiser, onLocked }) => {
         authHeaders()
       );
       onLocked(data.data);
+      fireConfetti({ count: 40 });
       showToast("Trip dates locked in for everyone", "success");
     } catch (err) {
       showToast(apiErrorMessage(err, "Couldn't lock these dates"), "error");
@@ -334,10 +336,17 @@ const TripDates = ({ trip, userId, isOrganiser, onLocked }) => {
       <aside className="rounded-3xl bg-white p-4 drop-shadow-ticket sm:p-6" aria-label="Best dates">
         <h3 className="font-display text-xl text-ink">Best dates</h3>
         {lockedStart && lockedEnd && (
-          <p className="mt-1 flex items-center gap-1.5 text-sm font-bold text-ink">
-            <Lock size={14} aria-hidden="true" />
-            Locked: {rangeLabel(lockedStart, lockedEnd)}
-          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            {/* Re-keyed on new dates, so the stamp thumps down again each time they're locked */}
+            <span
+              key={`${lockedStart}-${lockedEnd}`}
+              className="inline-flex -rotate-6 animate-stamp items-center gap-1.5 rounded-lg border-2 border-plum px-2.5 py-1 text-xs font-extrabold uppercase tracking-widest text-plum"
+            >
+              <Lock size={12} aria-hidden="true" />
+              Locked
+            </span>
+            <span className="text-sm font-bold text-ink">{rangeLabel(lockedStart, lockedEnd)}</span>
+          </div>
         )}
         {isOrganiser && lockedStart && lockedEnd && (
           <button type="button" className="btn-ghost mt-2" onClick={() => setUnlocking(true)}>
@@ -403,7 +412,13 @@ const TripDates = ({ trip, userId, isOrganiser, onLocked }) => {
             <h4 className="font-extrabold text-ink">Choose other dates</h4>
             <p className="text-sm text-ink-soft">Not one of the suggestions? Confirm any dates you like.</p>
             <div className="mt-3">
-              <DateRangePicker compact start={custom.start} end={custom.end} onChange={(start, end) => setCustom({ start, end })} />
+              <DateRangePicker
+                compact
+                start={custom.start}
+                end={custom.end}
+                initialMonth={month.format(KEY)}
+                onChange={(start, end) => setCustom({ start, end })}
+              />
             </div>
             <p className="mt-2 text-sm text-ink">
               {custom.start && custom.end
@@ -412,7 +427,12 @@ const TripDates = ({ trip, userId, isOrganiser, onLocked }) => {
                   ? "Now tap the last day."
                   : "Tap the first day, then the last."}
             </p>
-            <button type="submit" className="btn-dark mt-3 w-full" disabled={!custom.start || !custom.end}>
+            <button
+              type="submit"
+              className="btn-dark mt-3 w-full"
+              disabled={!custom.start || !custom.end}
+              title={custom.start && custom.end ? undefined : "Pick the first and last day first"}
+            >
               <CalendarCheck size={16} aria-hidden="true" />
               Confirm these dates
             </button>

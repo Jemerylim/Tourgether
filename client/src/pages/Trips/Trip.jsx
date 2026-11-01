@@ -1,6 +1,6 @@
-import React, { Suspense, lazy, useEffect, useState } from "react";
+import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { useLocation, useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { Backpack, CalendarDays, CalendarRange, CalendarPlus, ChevronLeft, ChevronRight, ListChecks, MapPin, Trash2, UserPlus, Users, Vote, Wallet, X } from "lucide-react";
+import { Backpack, CalendarDays, CalendarRange, CalendarPlus, ChevronLeft, ChevronRight, ListChecks, MapPin, MoreHorizontal, Plane, Trash2, UserPlus, Users, Vote, Wallet, X } from "lucide-react";
 import axios from "axios";
 import Navbar from "../../components/Navbar/Navbar";
 import Avatar from "../../components/Avatar/Avatar";
@@ -11,6 +11,7 @@ import PageLayout from "../../components/PageLayout/PageLayout";
 import { ErrorState, LoadingState } from "../../components/PageState/PageState";
 import { useToast } from "../../components/Toast/Toast";
 import TimePicker from "../../components/TimePicker/TimePicker";
+import DatePicker from "../../components/DatePicker/DatePicker";
 import SectionSidebar from "../../components/SectionSidebar/SectionSidebar";
 import InviteLink from "./InviteLink";
 import TripDates from "./TripDates";
@@ -43,9 +44,69 @@ import "@schedule-x/theme-default/dist/index.css";
 import dayjs from "dayjs";
 import { API_URL, assetUrl } from "../../config";
 import { apiErrorMessage } from "../../lib/apiError";
-import { formatDate } from "../../lib/trips";
+import { countdownLabel, coverPhoto, formatDate, isHappeningNow, tripLength } from "../../lib/trips";
 import { fromHere } from "../../lib/navigation";
 import { cn } from "../../lib/utils";
+
+// Every event on the trip calendar uses the app's lagoon colours instead of Schedule-X's blue
+const EVENT_CALENDARS = {
+  trip: {
+    colorName: "trip",
+    lightColors: { main: "#0A7C84", container: "#DDF1EF", onContainer: "#082F37" },
+    darkColors: { main: "#0A7C84", container: "#DDF1EF", onContainer: "#082F37" },
+  },
+};
+
+// Header buttons sit on the destination photo, so they get a soft white backing
+const HEADER_BUTTON = "btn-ghost bg-white/80 hover:bg-white";
+
+// Small pill of trip facts in the header
+const Chip = ({ icon: Icon, children }) => (
+  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/85 px-3 py-1 text-sm font-extrabold text-ink shadow-float">
+    <Icon size={14} aria-hidden="true" />
+    {children}
+  </span>
+);
+
+// "..." button with a small menu, for actions that shouldn't sit next to the everyday ones
+const MoreMenu = ({ label, children }) => {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = (event) => {
+      if (!rootRef.current?.contains(event.target)) setOpen(false);
+    };
+    const onKey = (event) => event.key === "Escape" && setOpen(false);
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        aria-label={label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={`${HEADER_BUTTON} !px-2.5`}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <MoreHorizontal size={18} aria-hidden="true" />
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-full z-30 mt-2 w-48 rounded-2xl bg-white p-1.5 shadow-soft ring-1 ring-ink/10" onClick={() => setOpen(false)}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // The calendar plugins live at module level, so the drag handler reaches the current
 // trip and the toast function through these refs (set inside the component).
@@ -117,6 +178,8 @@ const Trip = () => {
   const [showManageMembers, setShowManageMembers] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingTripDelete, setConfirmingTripDelete] = useState(false);
+  const [cover, setCover] = useState();
+  const calendarBoxRef = useRef(null);
 
   const [newEvent, setNewEvent] = useState({
     title: "",
@@ -133,6 +196,7 @@ const Trip = () => {
   // Calendar setup
   const calendar = useCalendarApp({
     views: [createViewDay(), createViewWeek(), createViewMonthGrid()],
+    calendars: EVENT_CALENDARS,
     events: [], // Initially empty
     plugins: [dragAndDropPlugin, calendarControlsPlugin, eventsServicePlugin,eventModal],
     callbacks:{
@@ -193,6 +257,38 @@ const Trip = () => {
     const frame = requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
     return () => cancelAnimationFrame(frame);
   }, [section, trip]);
+
+  // The day grid starts at midnight, so open it scrolled to the first event (or to
+  // the morning when there are none) instead of a screenful of empty small hours.
+  useEffect(() => {
+    if (section !== "calendar" || !trip) return undefined;
+    const timer = setTimeout(() => {
+      const grid = calendarBoxRef.current?.querySelector(".sx__view-container");
+      if (!grid || grid.clientHeight === 0) return;
+      const events = [...grid.querySelectorAll(".sx__time-grid-event")];
+      if (events.length === 0) {
+        grid.scrollTop = grid.scrollHeight * (7 / 24);
+        return;
+      }
+      const top = Math.min(...events.map((el) => el.getBoundingClientRect().top));
+      // The day names stick to the top of the scroller, so leave room for them
+      const header = grid.querySelector(".sx__week-header")?.offsetHeight || 0;
+      grid.scrollTop += top - grid.getBoundingClientRect().top - header - 16;
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [section, trip, selectedDates]);
+
+  // Same destination photo as the trip's card on the dashboard
+  useEffect(() => {
+    if (!trip) return undefined;
+    let cancelled = false;
+    coverPhoto(trip.name, `cover:${trip._id}`).then((url) => {
+      if (!cancelled) setCover(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [trip?._id, trip?.name]);
 
   // Fetch trip, event details, and members
   useEffect(() => {
@@ -258,6 +354,7 @@ const Trip = () => {
         const formattedEvents = eventsResponse.data.data.map((event) => ({
           id: event._id,
           title: event.title,
+          calendarId: "trip",
           start: dayjs(`${event.date} ${event.startTime}`).format("YYYY-MM-DD HH:mm"),
           end: dayjs(`${event.date} ${event.endTime}`).format("YYYY-MM-DD HH:mm"),
         }));
@@ -345,6 +442,7 @@ const Trip = () => {
                 {
                     id: response.data.data._id,
                     title: response.data.data.title,
+                    calendarId: "trip",
                     start: dayjs(`${response.data.data.date} ${response.data.data.startTime}`).format("YYYY-MM-DD HH:mm"),
                     end: dayjs(`${response.data.data.date} ${response.data.data.endTime}`).format("YYYY-MM-DD HH:mm"),
                 },
@@ -531,8 +629,18 @@ const Trip = () => {
 
   return (
     <PageLayout
-      maxWidth="max-w-[90rem]"
+      maxWidth="max-w-7xl"
       back={back}
+      cover={cover}
+      kicker={
+        <div className="flex flex-wrap items-center gap-2">
+          {countdownLabel(trip) && (
+            <Chip icon={Plane}>{isHappeningNow(trip) ? "Happening now" : countdownLabel(trip)}</Chip>
+          )}
+          {tripLength(trip) && <Chip icon={CalendarDays}>{tripLength(trip)} {tripLength(trip) === 1 ? "day" : "days"}</Chip>}
+          <Chip icon={ListChecks}>{selectedDates.length} {selectedDates.length === 1 ? "event" : "events"} planned</Chip>
+        </div>
+      }
       title={trip.name}
       subtitle={
         trip.startDate && trip.endDate
@@ -547,26 +655,40 @@ const Trip = () => {
                   Add event
                 </button>
               )}
-              <button className="btn-ghost" onClick={() => navigate(`/trip/${id}/events`, { state: fromHere(location, trip.name) })}>
+              <button className={HEADER_BUTTON} onClick={() => navigate(`/trip/${id}/events`, { state: fromHere(location, trip.name) })}>
                 <ListChecks size={18} aria-hidden="true" />
                 All events
               </button>
-              <button className="btn-ghost" onClick={() => setShowManageMembers(true)}>
+              <button className={HEADER_BUTTON} onClick={() => setShowManageMembers(true)}>
                 <Users size={18} aria-hidden="true" />
                 Members
               </button>
               {isOrganiser && (
-                <button className="btn-ghost" onClick={() => setConfirmingTripDelete(true)}>
-                  <Trash2 size={18} aria-hidden="true" />
-                  Delete trip
-                </button>
+                <MoreMenu label="More trip actions">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex w-full items-center gap-2 rounded-xl border-0 bg-transparent px-3 py-2 text-left text-sm font-extrabold text-plum hover:bg-lagoon-light"
+                    onClick={() => setConfirmingTripDelete(true)}
+                  >
+                    <Trash2 size={16} aria-hidden="true" />
+                    Delete trip
+                  </button>
+                </MoreMenu>
               )}
         </>
       }
     >
         {/* Who's on the trip */}
         <div className="mb-6 flex w-fit items-center gap-3 rounded-full bg-white py-2 pl-3 pr-4 drop-shadow-ticket">
-          <AvatarStack people={members} />
+          <button
+            type="button"
+            aria-label="View trip members"
+            onClick={() => setShowManageMembers(true)}
+            className="rounded-full border-0 bg-transparent p-0 focus:outline-none focus-visible:ring-4 focus-visible:ring-mustard"
+          >
+            <AvatarStack people={members} />
+          </button>
           {isOrganiser && (
             <button
               className="inline-flex items-center gap-1.5 rounded-full border-0 bg-lagoon-light px-3 py-1.5 text-sm font-extrabold text-ink hover:bg-sky"
@@ -581,7 +703,7 @@ const Trip = () => {
         {/* Sections: calendar, places, polls, money and lists */}
         <SectionSidebar items={SECTIONS} value={section} onChange={showSection} label="Trip planner">
           {/* The calendar stays mounted while hidden so Schedule-X keeps its state */}
-          <div className={cn("rounded-3xl bg-white p-3 drop-shadow-ticket sm:p-5", section !== "calendar" && "hidden")}>
+          <div ref={calendarBoxRef} className={cn("rounded-3xl bg-white p-3 drop-shadow-ticket sm:p-5", section !== "calendar" && "hidden")}>
             <div className="mb-3 flex items-center gap-2">
               <button type="button" aria-label="Previous" className="btn-ghost !px-2.5" onClick={() => moveCalendar(-1)}>
                 <ChevronLeft size={18} aria-hidden="true" />
@@ -614,6 +736,7 @@ const Trip = () => {
                   {
                     id: event._id,
                     title: event.title,
+                    calendarId: "trip",
                     start: dayjs(`${event.date} ${event.startTime}`).format("YYYY-MM-DD HH:mm"),
                     end: dayjs(`${event.date} ${event.endTime}`).format("YYYY-MM-DD HH:mm"),
                   },
@@ -733,15 +856,12 @@ const Trip = () => {
             <label htmlFor="event-date" className="field-label">
               Date
             </label>
-            <input
+            <DatePicker
               id="event-date"
-              type="date"
-              className="field"
               value={newEvent.date}
-              min={trip.startDate ? dayjs(trip.startDate).format("YYYY-MM-DD") : ""}
-              max={trip.endDate ? dayjs(trip.endDate).format("YYYY-MM-DD") : ""}
-              onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
-              required
+              min={trip.startDate ? dayjs(trip.startDate).format("YYYY-MM-DD") : undefined}
+              max={trip.endDate ? dayjs(trip.endDate).format("YYYY-MM-DD") : undefined}
+              onChange={(date) => setNewEvent({ ...newEvent, date })}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">

@@ -12,7 +12,9 @@ const Cloud = ({ className }) => (
 
 // Sky, setting sun, clouds and rolling hills. The front hill is the page colour,
 // so whatever follows the scene continues it without a seam.
-const Scene = ({ className, sunClassName, children }) => (
+// `cover` is an optional photo that fades in from the right of the sky, for pages about
+// one place (a trip). Clouds drift slowly unless the visitor prefers reduced motion.
+const Scene = ({ className, sunClassName, cover, children }) => (
   <div
     className={cn(
       "relative isolate overflow-hidden bg-gradient-to-b from-sky via-lagoon-light to-lagoon-light",
@@ -26,9 +28,18 @@ const Scene = ({ className, sunClassName, children }) => (
         sunClassName
       )}
     />
-    <Cloud className="absolute left-[6%] top-[20%] -z-10 w-32 opacity-90" />
-    <Cloud className="absolute left-[42%] top-[12%] -z-10 w-20 opacity-70" />
-    <Cloud className="absolute right-[4%] top-[48%] -z-10 w-24 opacity-80" />
+    <Cloud className="absolute left-[1%] top-[16%] -z-10 hidden w-32 animate-drift opacity-90 lg:block" />
+    <Cloud className="absolute right-[34%] top-[24%] -z-10 w-24 animate-drift-slow opacity-80 lg:hidden" />
+    <Cloud className="absolute left-[42%] top-[12%] -z-10 w-20 animate-drift-slow opacity-70" />
+    <Cloud className="absolute right-[4%] top-[48%] -z-10 w-24 animate-drift opacity-80" />
+
+    {cover && (
+      <img
+        src={cover}
+        alt=""
+        className="absolute inset-y-0 right-0 -z-10 h-full w-full object-cover opacity-30 [mask-composite:intersect] [-webkit-mask-composite:source-in] [mask-image:linear-gradient(to_left,#000_20%,transparent_95%),linear-gradient(to_bottom,transparent_70px,#000_40%)] sm:w-1/2 sm:opacity-90 sm:[mask-image:linear-gradient(to_left,#000_30%,transparent),linear-gradient(to_bottom,transparent_70px,#000_45%)]"
+      />
+    )}
 
     <svg
       aria-hidden="true"

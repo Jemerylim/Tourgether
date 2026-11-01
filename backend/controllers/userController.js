@@ -4,6 +4,11 @@ const User = require('../models/User');
 const crypto = require("crypto");
 const { config } = require('../config/env');
 const { sendMail, clientLink, escapeHtml } = require('../utils/mailer');
+const confirmPassword = require('../utils/confirmPassword');
+const deleteTripData = require('../utils/deleteTripData');
+const Trip = require('../models/Trip');
+const fs = require('fs');
+const path = require('path');
 
 // Emails go straight into Mongo filters, so only plain strings are accepted. An object
 // such as { "$regex": "^a" } would otherwise act as a query operator.
@@ -130,8 +135,10 @@ const updateUser = async (req, res) => {
     if (name) user.name = name;
     if (email) user.email = email;
     if (password) {
-      const salt = await bcrypt.genSalt(10);
-      user.password = await bcrypt.hash(password, salt);
+      if (typeof password !== 'string' || password.length < 8) {
+        return res.status(400).json({ message: 'Password must be at least 8 characters long' });
+      }
+      user.password = password; // hashed once, by the model's pre-save hook
     }
 
     await user.save();
@@ -176,7 +183,7 @@ const lookupUser = async (req, res) => {
     const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const exact = new RegExp(`^${escaped}$`, 'i');
     const byEmail = q.includes('@');
-    const users = await User.find(byEmail ? { email: exact } : { name: exact })
+    const users = await User.find({ ...(byEmail ? { email: exact } : { name: exact }), deletedAt: null })
       .select('_id name email')
       .limit(3);
 
@@ -346,22 +353,30 @@ const updateProfile = async (req, res) => {
       user.name = req.body.name;
     }
 
-    if (req.body.email) {
-      const email = cleanEmail(req.body.email);
-      if (!email) {
-        return res.status(400).json({ message: "Please add a valid email" });
-      }
-      // ✅ Check if the new email already exists in the database
-      const existingUser = await User.findOne({ email });
-      if (existingUser && existingUser._id.toString() !== req.user.id) {
-        return res.status(400).json({ message: "Email is already in use" });
-      }
-      user.email = email;
-    }
+    // Email is deliberately not changed here: that needs the current password (changeEmail)
 
     // ✅ Ensure bio updates
     if (req.body.bio) {
       user.bio = req.body.bio;
+    }
+
+    // Travel styles arrive as a JSON array (the form is multipart, so it's a string there).
+    // An empty list clears them; anything unknown is rejected rather than silently dropped.
+    if (req.body.travelStyles !== undefined) {
+      let styles;
+      try {
+        styles = typeof req.body.travelStyles === 'string' ? JSON.parse(req.body.travelStyles) : req.body.travelStyles;
+      } catch {
+        return res.status(400).json({ message: 'Travel styles must be a list' });
+      }
+      if (!Array.isArray(styles) || styles.some((style) => !User.TRAVEL_STYLES.includes(style))) {
+        return res.status(400).json({ message: 'Unknown travel style' });
+      }
+      styles = [...new Set(styles)];
+      if (styles.length > User.MAX_TRAVEL_STYLES) {
+        return res.status(400).json({ message: `Pick at most ${User.MAX_TRAVEL_STYLES} travel styles` });
+      }
+      user.travelStyles = styles;
     }
 
     // ✅ Ensure profile picture updates
@@ -384,7 +399,124 @@ const updateProfile = async (req, res) => {
 
 
 
+// Change the sign-in email. Needs the current password.
+const changeEmail = async (req, res) => {
+  try {
+    const email = cleanEmail(req.body.email);
+    if (!email) {
+      return res.status(400).json({ message: 'Enter the new email address' });
+    }
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    if (!(await confirmPassword(res, user, req.body.currentPassword))) return;
+
+    if (email === user.email) {
+      return res.status(400).json({ message: "That's already your email" });
+    }
+    if (await User.findOne({ email })) {
+      return res.status(400).json({ message: 'Email is already in use' });
+    }
+
+    user.email = email;
+    await user.save();
+    res.status(200).json({ message: 'Email updated', user });
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: 'Please add a valid email' });
+    }
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Change the password. Needs the current one.
+const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (typeof newPassword !== 'string' || newPassword.length < 8) {
+      return res.status(400).json({ message: 'The new password must be at least 8 characters long' });
+    }
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    if (!(await confirmPassword(res, user, currentPassword))) return;
+
+    if (newPassword === currentPassword) {
+      return res.status(400).json({ message: 'Pick a password you are not using already' });
+    }
+
+    user.password = newPassword; // hashed once, by the model's pre-save hook
+    await user.save();
+    res.status(200).json({ message: 'Password updated' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Delete the account. Needs the password. Trips only the user is on are deleted; a trip with
+// other people on it blocks deletion (there is no way to hand a trip over yet). The user
+// record itself is anonymised rather than removed, so expenses and polls on trips they
+// shared keep adding up for everyone else.
+const deleteAccount = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    if (!(await confirmPassword(res, user, req.body.password))) return;
+
+    const owned = await Trip.find({ createdBy: user._id });
+    const shared = owned.filter(
+      (trip) =>
+        trip.members.some((member) => !member.equals(user._id)) ||
+        trip.sentInvitations.some((invite) => invite.status === 'pending')
+    );
+    if (shared.length > 0) {
+      return res.status(409).json({
+        message: 'Other people are on some of your trips. Delete those trips first, or ask them to leave.',
+        trips: shared.map((trip) => trip.name),
+      });
+    }
+
+    for (const trip of owned) {
+      await deleteTripData(trip);
+    }
+    // Invitations they never answered; trips they joined keep them as a (former) member
+    await Trip.updateMany(
+      { 'sentInvitations.userId': user._id, members: { $ne: user._id } },
+      { $pull: { sentInvitations: { userId: user._id } } }
+    );
+
+    const photo = user.profilePicture;
+    user.name = 'Former traveller';
+    user.email = `deleted.${user._id}@deleted.invalid`;
+    user.password = crypto.randomBytes(32).toString('hex'); // hashed by the pre-save hook; nobody knows it
+    user.bio = undefined;
+    user.travelStyles = [];
+    user.profilePicture = 'uploads/profile-pic.jpg';
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+    user.deletedAt = new Date();
+    await user.save({ validateBeforeSave: false }); // the placeholder email isn't a normal address
+
+    // Remove their uploaded photo (never the shared default)
+    if (photo && photo !== 'uploads/profile-pic.jpg' && /^uploads[\\/][\w.-]+$/.test(photo)) {
+      fs.unlink(path.join(__dirname, '..', photo), () => {});
+    }
+
+    res.status(200).json({ message: 'Account deleted' });
+  } catch (error) {
+    console.error('Error deleting account:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
+  changeEmail,
+  changePassword,
+  deleteAccount,
   registerUser,
   loginUser,
   getUserDetails,

@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Check, Compass, MapPin } from "lucide-react";
+import { StyleChips } from "../Profile/TravelStyles";
+import { useToast } from "../../components/Toast/Toast";
+import { apiErrorMessage } from "../../lib/apiError";
+import { saveTravelStyles, stylesFromAnswers } from "../../lib/travelStyles";
 import Navbar from "../../components/Navbar/Navbar";
 import Footer from "../../components/Footer/Footer";
 import PageLayout from "../../components/PageLayout/PageLayout";
@@ -158,6 +162,19 @@ export const Result = () => {
     const [pick, ...rest] = ranked;
     const alternatives = rest.slice(0, 2);
     const [photo, setPhoto] = useState();
+    const { showToast } = useToast();
+    const styles = answers ? stylesFromAnswers(answers) : [];
+    const [savedStyles, setSavedStyles] = useState(false);
+
+    const saveStyles = async () => {
+        try {
+            await saveTravelStyles(styles);
+            setSavedStyles(true);
+            showToast("Travel style added to your profile", "success");
+        } catch (err) {
+            showToast(apiErrorMessage(err, "Couldn't save your travel style"), "error");
+        }
+    };
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -262,6 +279,22 @@ export const Result = () => {
                     </>
                 }
             />
+
+            {styles.length > 0 && (
+                <section className="mt-10 rounded-3xl bg-lagoon-light p-6 sm:p-8" aria-labelledby="style-heading">
+                    <h2 id="style-heading" className="font-display text-2xl text-ink">
+                        Your travel style
+                    </h2>
+                    <StyleChips styles={styles} className="mt-4" />
+                    {isLoggedIn() ? (
+                        <button className="btn-dark mt-5" onClick={saveStyles} disabled={savedStyles}>
+                            {savedStyles ? "Added to your profile" : "Add to my profile"}
+                        </button>
+                    ) : (
+                        <p className="mt-4 text-ink-soft">Sign up and we'll keep this on your profile for your travel group.</p>
+                    )}
+                </section>
+            )}
 
             {alternatives.length > 0 && (
                 <section className="mt-14" aria-labelledby="alternatives-heading">

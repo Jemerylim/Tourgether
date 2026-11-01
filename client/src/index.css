@@ -50,6 +50,28 @@ body {
   font-family: "Figtree", system-ui, sans-serif;
 }
 
+/* Our own Today / back / forward row sits above the calendar (it keeps to the trip's
+   dates), so hide Schedule-X's duplicate pair. Events get rounded, friendlier chips. */
+.sx-react-calendar-wrapper .sx__today-button,
+.sx-react-calendar-wrapper .sx__chevron-wrapper {
+  display: none;
+}
+.sx-react-calendar-wrapper .sx__range-heading {
+  font-family: "Gloock", Georgia, serif;
+  font-size: 1.35rem;
+  color: #0f4c57;
+}
+.sx-react-calendar-wrapper .sx__time-grid-event,
+.sx-react-calendar-wrapper .sx__month-grid-event {
+  border-radius: 10px;
+  font-weight: 700;
+  border-inline-start: 4px solid #0a7c84;
+}
+.sx-react-calendar-wrapper .sx__week-grid__date--is-today .sx__week-grid__date-number {
+  background: #f6c453;
+  color: #082f37;
+}
+
 /* Numbered teardrop pins on the trip map (Leaflet divIcons, so plain CSS). The pin is a
    square with three round corners turned 45deg; the number is turned back upright. */
 .trip-pin {
@@ -90,20 +112,26 @@ body {
       focus-visible:ring-lagoon focus-visible:ring-offset-2 focus-visible:ring-offset-paper
       disabled:cursor-not-allowed disabled:opacity-60;
   }
+  /* A disabled button turns into a soft, flat version of its colour (no ledge, no lift)
+     rather than a greyed-out copy, so it reads as "not yet" instead of "broken". */
   .btn-primary {
     @apply btn bg-mustard text-ink shadow-[0_4px_0_0_theme(colors.mustard.dark)] hover:-translate-y-0.5
-      hover:text-ink hover:shadow-[0_6px_0_0_theme(colors.mustard.dark)] active:translate-y-1 active:shadow-none;
+      hover:text-ink hover:shadow-[0_6px_0_0_theme(colors.mustard.dark)] active:translate-y-1 active:shadow-none
+      disabled:bg-mustard/35 disabled:text-ink/60 disabled:opacity-100 disabled:shadow-none
+      disabled:hover:translate-y-0 disabled:hover:shadow-none;
   }
   .btn-dark {
     @apply btn bg-ink text-white shadow-[0_4px_0_0_theme(colors.ink.deep)] hover:-translate-y-0.5
-      hover:text-white hover:shadow-[0_6px_0_0_theme(colors.ink.deep)] active:translate-y-1 active:shadow-none;
+      hover:text-white hover:shadow-[0_6px_0_0_theme(colors.ink.deep)] active:translate-y-1 active:shadow-none
+      disabled:bg-ink/15 disabled:text-ink/55 disabled:opacity-100 disabled:shadow-none
+      disabled:hover:translate-y-0 disabled:hover:text-ink/55 disabled:hover:shadow-none;
   }
   .btn-ghost {
     @apply btn bg-transparent text-ink hover:bg-ink/5 hover:text-ink;
   }
   .field {
     @apply w-full rounded-xl border-2 border-transparent bg-lagoon-light/70 px-4 py-3 text-base
-      text-ink-deep placeholder:text-ink/40 transition focus:border-lagoon focus:bg-white focus:outline-none;
+      text-ink-deep placeholder:text-ink/55 transition focus:border-lagoon focus:bg-white focus:outline-none;
   }
   .field-label {
     @apply mb-1.5 block text-sm font-extrabold text-ink;
@@ -141,6 +169,10 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-flip,
+  .animate-drift,
+  .animate-drift-slow,
+  .animate-stamp,
+  .animate-pop,
   .animate-toast-in,
   .animate-fade-in,
   .animate-drawer-in {

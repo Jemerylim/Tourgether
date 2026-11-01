@@ -10,6 +10,7 @@ const Place = require('../models/Place');
 const mongoose = require('mongoose');
 const { sendMail, clientLink, escapeHtml } = require('../utils/mailer');
 const { loadTripForMember, roleOf } = require('../utils/tripAccess');
+const deleteTripData = require('../utils/deleteTripData');
 
 // Email subjects must stay on one line
 const oneLine = (text) => String(text).replace(/[\r\n]+/g, ' ');
@@ -168,16 +169,7 @@ exports.deleteTrip = async (req, res) => {
     if (!trip.createdBy.equals(req.user._id)) {
       return res.status(403).json({ success: false, message: 'Only the trip organiser can delete this trip' });
     }
-    await trip.deleteOne();
-    // Everything planned inside the trip goes with it
-    await Promise.all([
-      Poll.deleteMany({ trip: trip._id }),
-      Event.deleteMany({ trip: trip._id }),
-      UserTripDate.deleteMany({ tripId: trip._id }),
-      Expense.deleteMany({ trip: trip._id }),
-      ChecklistItem.deleteMany({ trip: trip._id }),
-      Place.deleteMany({ trip: trip._id }),
-    ]);
+    await deleteTripData(trip); // everything planned inside the trip goes with it
     res.status(200).json({ success: true, message: 'Trip deleted successfully' });
   } catch (error) {
     console.error('Error deleting trip:', error);

@@ -1,5 +1,6 @@
 import React from "react";
 import dayjs from "dayjs";
+import DatePicker from "../../components/DatePicker/DatePicker";
 import Avatar from "../../components/Avatar/Avatar";
 import { assetUrl } from "../../config";
 import { cn } from "../../lib/utils";
@@ -281,8 +282,7 @@ const ExpenseForm = ({ form, setForm, people, userId, baseCurrency, tripRate, ra
           ) : (
             <div>
               <label htmlFor="expense-date" className="field-label">Date</label>
-              <input id="expense-date" type="date" className="field" value={form.date}
-                onChange={(e) => update({ date: e.target.value })} />
+              <DatePicker id="expense-date" value={form.date} align="right" placement="top" onChange={(date) => update({ date })} />
             </div>
           )}
         </div>
@@ -290,8 +290,7 @@ const ExpenseForm = ({ form, setForm, people, userId, baseCurrency, tripRate, ra
         {isPayment && (
           <div>
             <label htmlFor="expense-date" className="field-label">Date</label>
-            <input id="expense-date" type="date" className="field" value={form.date}
-              onChange={(e) => update({ date: e.target.value })} />
+            <DatePicker id="expense-date" value={form.date} onChange={(date) => update({ date })} />
           </div>
         )}
 

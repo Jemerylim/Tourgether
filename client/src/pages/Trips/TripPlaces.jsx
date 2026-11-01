@@ -460,7 +460,12 @@ const TripPlaces = ({ trip, userId, isOrganiser }) => {
             value={newList}
             onChange={(event) => setNewList(event.target.value)}
           />
-          <button type="submit" className="btn-dark shrink-0" disabled={!newList.trim()}>
+          <button
+            type="submit"
+            className="btn-dark shrink-0"
+            disabled={!newList.trim()}
+            title={newList.trim() ? undefined : "Name the list first"}
+          >
             <Plus size={18} aria-hidden="true" />
             Add list
           </button>

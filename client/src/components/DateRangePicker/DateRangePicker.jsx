@@ -19,8 +19,9 @@ const parseKey = (key) => {
 // Month grid for choosing a trip's start and end: first tap sets the start, the second
 // sets the end and fills the range between (tapping the same day twice picks a single day).
 // `start`/`end` are "YYYY-MM-DD" ("" when unset). `compact` is for narrow side panels.
-const DateRangePicker = ({ start, end, onChange, min = todayKey(), compact = false }) => {
-  const initial = start ? parseKey(start) : new Date();
+// `initialMonth` ("YYYY-MM-DD") is the month shown while nothing is picked yet.
+const DateRangePicker = ({ start, end, onChange, min = todayKey(), compact = false, initialMonth }) => {
+  const initial = start ? parseKey(start) : initialMonth ? parseKey(initialMonth) : new Date();
   const [view, setView] = useState({ year: initial.getFullYear(), month: initial.getMonth() });
 
   const cells = useMemo(() => {

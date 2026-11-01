@@ -14,12 +14,13 @@ const PageLayout = ({
   actions,
   maxWidth = "max-w-6xl",
   sun = "right-[4%] top-[12%] h-20 w-20 sm:right-[30%] sm:top-[14%] sm:h-36 sm:w-36",
+  cover,
   footer = false,
   children,
 }) => (
   <div className="flex min-h-screen flex-col bg-paper text-left">
     <Navbar overlay />
-    <Scene className="-mt-[76px] pt-[76px]" sunClassName={sun}>
+    <Scene className="-mt-[76px] pt-[76px]" sunClassName={cover ? "hidden" : sun} cover={cover}>
       <div className={`relative z-10 mx-auto w-full ${maxWidth} px-4 pb-32 pt-10 sm:px-6`}>
         <PageHeader title={title} subtitle={subtitle} kicker={kicker} back={back} actions={actions} />
       </div>

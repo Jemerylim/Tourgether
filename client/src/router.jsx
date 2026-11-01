@@ -15,6 +15,7 @@ import AllEvents from "./pages/Trips/AllEvents";
 import ResetPassword from "./pages/ResetPassword/ResetPassword";
 import Profile from "./pages/Profile/Profile";
 import NotFound from "./pages/NotFound/NotFound";
+import Settings from "./pages/Settings/Settings";
 
 // Landing and auth pages are for signed-out visitors; send signed-in ones on to where
 // they were heading (?redirect=) or their dashboard. An expired token is cleared by the
@@ -43,6 +44,7 @@ const AppRoutes = () => (
         <Route path="/trip/:id/events" element={<AllEvents />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<NotFound />} />
     </Routes>
 );
