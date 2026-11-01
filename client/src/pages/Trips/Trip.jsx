@@ -1,158 +1,44 @@
 import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { useLocation, useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { Backpack, CalendarDays, CalendarRange, CalendarPlus, ChevronLeft, ChevronRight, ListChecks, MapPin, MoreHorizontal, Plane, Trash2, UserPlus, Users, Vote, Wallet, X } from "lucide-react";
+import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, ListChecks, Plane, Trash2, UserPlus, Users } from "lucide-react";
+import { useCalendarApp, ScheduleXCalendar } from "@schedule-x/react";
+import { createViewDay, createViewMonthGrid, createViewWeek } from "@schedule-x/calendar";
+import dayjs from "dayjs";
 import axios from "../../api/client";
+import { getToken } from "../../api/session";
 import Navbar from "../../components/Navbar/Navbar";
-import Avatar from "../../components/Avatar/Avatar";
 import AvatarStack from "../../components/Avatar/AvatarStack";
-import Modal from "../../components/Modal/Modal";
 import ConfirmDialog from "../../components/Modal/ConfirmDialog";
 import PageLayout from "../../components/PageLayout/PageLayout";
 import { ErrorState, LoadingState } from "../../components/PageState/PageState";
 import { useToast } from "../../components/Toast/Toast";
-import TimePicker from "../../components/TimePicker/TimePicker";
-import DatePicker from "../../components/DatePicker/DatePicker";
 import SectionSidebar from "../../components/SectionSidebar/SectionSidebar";
-import InviteLink from "./InviteLink";
-import TripDates from "./TripDates";
-import TripPolls from "./TripPolls";
-import TripExpenses from "./TripExpenses";
-import TripChecklist from "./TripChecklist";
-
-// The map library is large, so the Places section loads the first time it's opened
-const TripPlaces = lazy(() => import("./TripPlaces"));
-
-const SECTIONS = [
-  { value: "calendar", label: "Calendar", icon: CalendarDays },
-  { value: "dates", label: "Find dates", icon: CalendarRange },
-  { value: "places", label: "Places", icon: MapPin },
-  { value: "polls", label: "Polls", icon: Vote },
-  { value: "expenses", label: "Expenses", icon: Wallet },
-  { value: "lists", label: "Packing & to-dos", icon: Backpack },
-];
-import { useCalendarApp, ScheduleXCalendar } from "@schedule-x/react";
-import {
-  createViewDay,
-  createViewMonthGrid,
-  createViewWeek,
-} from "@schedule-x/calendar";
-import { createDragAndDropPlugin } from "@schedule-x/drag-and-drop";
-import { createCalendarControlsPlugin } from "@schedule-x/calendar-controls";
-import { createEventsServicePlugin } from "@schedule-x/events-service";
-import { createEventModalPlugin } from '@schedule-x/event-modal'
-import "@schedule-x/theme-default/dist/index.css";
-import dayjs from "dayjs";
-import { API_URL, assetUrl } from "../../config";
+import { API_URL } from "../../config";
 import { apiErrorMessage } from "../../lib/apiError";
 import { countdownLabel, coverPhoto, formatDate, isHappeningNow, tripLength } from "../../lib/trips";
 import { fromHere } from "../../lib/navigation";
 import { cn } from "../../lib/utils";
-import { getToken } from "../../api/session";
+import TripDates from "./TripDates";
+import TripPolls from "./TripPolls";
+import TripExpenses from "./TripExpenses";
+import TripChecklist from "./TripChecklist";
+import Chip from "./trip/Chip";
+import MoreMenu from "./trip/MoreMenu";
+import MembersModal from "./trip/MembersModal";
+import EventFormModal from "./trip/EventFormModal";
+import { HEADER_BUTTON, SECTIONS } from "./trip/constants";
+import {
+  CALENDAR_PLUGINS,
+  EVENT_CALENDARS,
+  calendarControlsPlugin,
+  eventsServicePlugin,
+  notifyRef,
+  toCalendarEvent,
+  tripRef,
+} from "./trip/calendar";
 
-// Every event on the trip calendar uses the app's lagoon colours instead of Schedule-X's blue
-const EVENT_CALENDARS = {
-  trip: {
-    colorName: "trip",
-    lightColors: { main: "#0A7C84", container: "#DDF1EF", onContainer: "#082F37" },
-    darkColors: { main: "#0A7C84", container: "#DDF1EF", onContainer: "#082F37" },
-  },
-};
-
-// Header buttons sit on the destination photo, so they get a soft white backing
-const HEADER_BUTTON = "btn-ghost bg-white/80 hover:bg-white";
-
-// Small pill of trip facts in the header
-const Chip = ({ icon: Icon, children }) => (
-  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/85 px-3 py-1 text-sm font-extrabold text-ink shadow-float">
-    <Icon size={14} aria-hidden="true" />
-    {children}
-  </span>
-);
-
-// "..." button with a small menu, for actions that shouldn't sit next to the everyday ones
-const MoreMenu = ({ label, children }) => {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef(null);
-
-  useEffect(() => {
-    if (!open) return undefined;
-    const close = (event) => {
-      if (!rootRef.current?.contains(event.target)) setOpen(false);
-    };
-    const onKey = (event) => event.key === "Escape" && setOpen(false);
-    document.addEventListener("pointerdown", close);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("pointerdown", close);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
-  return (
-    <div ref={rootRef} className="relative">
-      <button
-        type="button"
-        aria-label={label}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        className={`${HEADER_BUTTON} !px-2.5`}
-        onClick={() => setOpen((current) => !current)}
-      >
-        <MoreHorizontal size={18} aria-hidden="true" />
-      </button>
-      {open && (
-        <div role="menu" className="absolute right-0 top-full z-30 mt-2 w-48 rounded-2xl bg-white p-1.5 shadow-soft ring-1 ring-ink/10" onClick={() => setOpen(false)}>
-          {children}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// The calendar plugins live at module level, so the drag handler reaches the current
-// trip and the toast function through these refs (set inside the component).
-const tripRef = { current: null };
-const notifyRef = { current: () => {} };
-
-// Plugins
-const calendarControlsPlugin = createCalendarControlsPlugin({
-    showTodayButton: false, // Hide the "Today" button
-  showDatePicker: false,  // Hide the date picker
-});
-const eventsServicePlugin = createEventsServicePlugin();
-const eventModal = createEventModalPlugin()
-const dragAndDropPlugin = createDragAndDropPlugin({
-    callbacks: {
-      onDrop: ({ event, start, end, revert }) => {
-        console.log("Dragged Event:", event);
-        
-        const trip = tripRef.current;
-        if (!trip || !trip.startDate || !trip.endDate) {
-          console.warn("Trip details not loaded yet.");
-          return;
-        }
-        if (trip.myRole === "viewer") {
-          notifyRef.current("Viewers can't move events.", "error");
-          revert();
-          return;
-        }
-
-        const tripStart = dayjs(trip.startDate).format("YYYY-MM-DD");
-        const tripEnd = dayjs(trip.endDate).format("YYYY-MM-DD");
-        const newStartDate = dayjs(start).format("YYYY-MM-DD");
-        const newEndDate = dayjs(end).format("YYYY-MM-DD");
-  
-        if (newStartDate < tripStart || newEndDate > tripEnd) {
-          console.warn("Drag restricted: Event cannot be moved outside trip dates.");
-          notifyRef.current(`Events have to stay between ${tripStart} and ${tripEnd}.`, "error");
-          revert(); 
-        } else {
-          console.log("Event moved successfully.");
-        }
-      }
-    }
-  });
-  
+// The map library is large, so the Places section loads the first time it's opened
+const TripPlaces = lazy(() => import("./TripPlaces"));
 
 const Trip = () => {
   const { id } = useParams();
@@ -199,7 +85,7 @@ const Trip = () => {
     views: [createViewDay(), createViewWeek(), createViewMonthGrid()],
     calendars: EVENT_CALENDARS,
     events: [], // Initially empty
-    plugins: [dragAndDropPlugin, calendarControlsPlugin, eventsServicePlugin,eventModal],
+    plugins: CALENDAR_PLUGINS,
     callbacks:{
         // Double-click an empty slot to start a new event there: a one-hour event from the
         // slot's time in the day and week views, or just the date in the month view
@@ -345,13 +231,7 @@ const Trip = () => {
         );
 
         // Format events for the calendar
-        const formattedEvents = eventsResponse.data.data.map((event) => ({
-          id: event._id,
-          title: event.title,
-          calendarId: "trip",
-          start: dayjs(`${event.date} ${event.startTime}`).format("YYYY-MM-DD HH:mm"),
-          end: dayjs(`${event.date} ${event.endTime}`).format("YYYY-MM-DD HH:mm"),
-        }));
+        const formattedEvents = eventsResponse.data.data.map(toCalendarEvent);
 
         console.log("Formatted events from API:", formattedEvents);
         setSelectedDates(formattedEvents); // Update state
@@ -369,7 +249,6 @@ const Trip = () => {
 
   const handleSubmitEvent = async (e) => {
     e.preventDefault();
-    const authToken = getToken();
 
     if (!newEvent.title || !newEvent.date || !newEvent.startTime || !newEvent.endTime) {
         setErrorMessage("Please fill in all fields.");
@@ -429,16 +308,7 @@ const Trip = () => {
                 }
             );
 
-            setSelectedDates((prev) => [
-                ...prev,
-                {
-                    id: response.data.data._id,
-                    title: response.data.data.title,
-                    calendarId: "trip",
-                    start: dayjs(`${response.data.data.date} ${response.data.data.startTime}`).format("YYYY-MM-DD HH:mm"),
-                    end: dayjs(`${response.data.data.date} ${response.data.data.endTime}`).format("YYYY-MM-DD HH:mm"),
-                },
-            ]);
+            setSelectedDates((prev) => [...prev, toCalendarEvent(response.data.data)]);
         }
 
         // Reset the form and clear error message
@@ -457,7 +327,6 @@ const Trip = () => {
     if (!editingEvent) return;
     setConfirmingDelete(false);
 
-    const authToken = getToken();
 
     try {
         await axios.delete(`${API_URL}/api/events/${editingEvent.id}`);
@@ -479,7 +348,6 @@ const Trip = () => {
   };
 
   const handleInviteMember = async (email) => {
-    const authToken = getToken();
     try {
       await axios.post(
         `${API_URL}/api/trips/${id}/invite`,
@@ -493,7 +361,6 @@ const Trip = () => {
   };
 
   const handleRemoveMember = async (memberId) => {
-    const authToken = getToken();
     try {
       await axios.delete(
         `${API_URL}/api/trips/${id}/remove-member/${memberId}`
@@ -508,11 +375,6 @@ const Trip = () => {
 
   const isOrganiser = trip?.createdBy?._id === userId;
   const canEdit = trip?.myRole !== "viewer";
-
-  const roleOf = (member) =>
-    member._id === trip.createdBy._id
-      ? "owner"
-      : trip.memberRoles?.find((entry) => entry.user === member._id)?.role || "editor";
 
   const handleChangeRole = async (member, role) => {
     try {
@@ -609,8 +471,6 @@ const Trip = () => {
       </div>
     );
   }
-
-  const memberPhoto = (member) => assetUrl(member.profilePicture);
 
   return (
     <PageLayout
@@ -715,18 +575,7 @@ const Trip = () => {
               trip={trip}
               userId={userId}
               isOrganiser={isOrganiser}
-              onEventCreated={(event) =>
-                setSelectedDates((prev) => [
-                  ...prev,
-                  {
-                    id: event._id,
-                    title: event.title,
-                    calendarId: "trip",
-                    start: dayjs(`${event.date} ${event.startTime}`).format("YYYY-MM-DD HH:mm"),
-                    end: dayjs(`${event.date} ${event.endTime}`).format("YYYY-MM-DD HH:mm"),
-                  },
-                ])
-              }
+              onEventCreated={(event) => setSelectedDates((prev) => [...prev, toCalendarEvent(event)])}
             />
           )}
           {userId && section === "expenses" && (
@@ -737,166 +586,28 @@ const Trip = () => {
           )}
         </SectionSidebar>
 
-      {/* Members */}
-      <Modal open={showManageMembers} onClose={() => setShowManageMembers(false)} title="Members" className="max-w-lg">
-        <p className="text-sm text-ink-soft">
-          Organised by <span className="font-bold text-ink">{trip.createdBy.name}</span>
-        </p>
+      <MembersModal
+        open={showManageMembers}
+        onClose={() => setShowManageMembers(false)}
+        trip={trip}
+        members={members}
+        isOrganiser={isOrganiser}
+        onInvite={handleInviteMember}
+        onRemove={handleRemoveMember}
+        onChangeRole={handleChangeRole}
+      />
 
-        <ul className="mt-4 space-y-3">
-          {members.map((member) => (
-            <li key={member._id} className="flex items-center gap-3">
-              <Avatar src={memberPhoto(member)} name={member.name} size="sm" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-bold text-ink">{member.name}</p>
-                <p className="truncate text-sm text-ink-soft">{member.email}</p>
-              </div>
-              {member._id === trip.createdBy._id ? (
-                <span className="rounded-full bg-mustard px-2.5 py-1 text-xs font-extrabold text-ink">Organiser</span>
-              ) : isOrganiser ? (
-                <>
-                  <select
-                    aria-label={`Role for ${member.name}`}
-                    value={roleOf(member)}
-                    onChange={(e) => handleChangeRole(member, e.target.value)}
-                    className="rounded-full border-0 bg-lagoon-light px-3 py-1.5 text-sm font-extrabold text-ink"
-                  >
-                    <option value="editor">Editor</option>
-                    <option value="viewer">Viewer</option>
-                  </select>
-                  <button
-                    type="button"
-                    aria-label={`Remove ${member.name}`}
-                    onClick={() => handleRemoveMember(member._id)}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border-0 bg-transparent p-0 text-ink hover:bg-lagoon-light"
-                  >
-                    <X size={16} aria-hidden="true" />
-                  </button>
-                </>
-              ) : (
-                <span className="rounded-full bg-lagoon-light px-2.5 py-1 text-xs font-extrabold capitalize text-ink">
-                  {roleOf(member)}
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-
-        {isOrganiser && (
-          <form
-            className="mt-6"
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleInviteMember(e.target.email.value);
-              e.target.reset();
-            }}
-          >
-            <label htmlFor="invite-email" className="field-label">
-              Invite by email
-            </label>
-            <div className="flex gap-2">
-              <input
-                id="invite-email"
-                type="email"
-                name="email"
-                placeholder="friend@example.com"
-                autoComplete="off"
-                required
-                className="field"
-              />
-              <button type="submit" className="btn-dark shrink-0">
-                Send invite
-              </button>
-            </div>
-          </form>
-        )}
-
-        {isOrganiser && <InviteLink tripId={trip._id} tripName={trip.name} />}
-
-        <div className="mt-6 flex justify-end">
-          <button type="button" className="btn-ghost" onClick={() => setShowManageMembers(false)}>
-            Done
-          </button>
-        </div>
-      </Modal>
-
-      {/* Create / edit event */}
-      <Modal open={showCreateForm} onClose={closeEventForm} title={isEditing ? "Edit event" : "Add event"} className="overflow-visible">
-        <form onSubmit={handleSubmitEvent} className="space-y-4" noValidate>
-          <div>
-            <label htmlFor="event-title" className="field-label">
-              Event
-            </label>
-            <input
-              id="event-title"
-              type="text"
-              className="field"
-              placeholder="Dinner at the harbour"
-              value={newEvent.title}
-              onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="event-date" className="field-label">
-              Date
-            </label>
-            <DatePicker
-              id="event-date"
-              value={newEvent.date}
-              min={trip.startDate ? dayjs(trip.startDate).format("YYYY-MM-DD") : undefined}
-              max={trip.endDate ? dayjs(trip.endDate).format("YYYY-MM-DD") : undefined}
-              onChange={(date) => setNewEvent({ ...newEvent, date })}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="event-start" className="field-label">
-                Starts
-              </label>
-              <TimePicker
-                id="event-start"
-                value={newEvent.startTime}
-                onChange={(startTime) => setNewEvent({ ...newEvent, startTime })}
-              />
-            </div>
-            <div>
-              <label htmlFor="event-end" className="field-label">
-                Ends
-              </label>
-              <TimePicker
-                id="event-end"
-                value={newEvent.endTime}
-                onChange={(endTime) => setNewEvent({ ...newEvent, endTime })}
-              />
-            </div>
-          </div>
-
-          {errorMessage && (
-            <p role="alert" className="text-sm font-bold text-red-700">
-              {errorMessage}
-            </p>
-          )}
-
-          <div className="flex flex-wrap items-center gap-2 pt-2">
-            {isEditing && (
-              <button
-                type="button"
-                className="mr-auto border-0 bg-transparent p-0 text-sm font-extrabold text-plum underline hover:text-plum"
-                onClick={() => setConfirmingDelete(true)}
-              >
-                Delete event
-              </button>
-            )}
-            <button type="button" className="btn-ghost ml-auto" onClick={closeEventForm}>
-              Cancel
-            </button>
-            <button type="submit" className="btn-primary">
-              {isEditing ? "Save changes" : "Add event"}
-            </button>
-          </div>
-        </form>
-      </Modal>
+      <EventFormModal
+        open={showCreateForm}
+        onClose={closeEventForm}
+        isEditing={isEditing}
+        event={newEvent}
+        onChange={setNewEvent}
+        trip={trip}
+        errorMessage={errorMessage}
+        onSubmit={handleSubmitEvent}
+        onRequestDelete={() => setConfirmingDelete(true)}
+      />
 
       <ConfirmDialog
         open={confirmingDelete}
