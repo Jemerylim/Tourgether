@@ -4,6 +4,7 @@ import {
   CalendarCheck,
   CalendarPlus,
   ChevronDown,
+  CircleCheck,
   ExternalLink,
   Footprints,
   Heart,
@@ -25,20 +26,25 @@ const ROW_BUTTON =
   "grid h-7 w-7 shrink-0 place-items-center rounded-full border-0 bg-transparent p-0 text-ink-soft opacity-100 hover:bg-lagoon-light hover:text-ink sm:opacity-0 sm:focus-visible:opacity-100 sm:group-hover/row:opacity-100";
 
 // One named list of places, numbered to match its pins, with the walk between each
-// and which day of the itinerary each is planned for
+// and which day of the itinerary each is planned for. Drag a row (or focus its number
+// and use the arrow keys) to reorder; once the trip has started, places can be ticked off.
 const PlaceListCard = ({
   list,
+  lists,
   colour,
   places,
   legs,
   schedule,
   recommendations,
   recommendationsLoading,
+  preferred,
+  preferredFor,
   near,
   members,
   userId,
   isOrganiser,
   canPlan,
+  tripStarted,
   sortByVotes,
   activeId,
   onHover,
@@ -52,14 +58,30 @@ const PlaceListCard = ({
   onSaveNotes,
   onToggleSort,
   onAskGroup,
+  onMove,
+  onVisited,
+  onReorder,
 }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [openId, setOpenId] = useState(null);
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(list.name);
+  const [dragId, setDragId] = useState(null);
   const savedIds = new Set(places.map((place) => place.sourceId).filter(Boolean));
   const suggestions = recommendations.filter((place) => !savedIds.has(place.sourceId));
   const planned = places.filter((place) => schedule.has(place._id)).length;
+  const visited = places.filter((place) => place.visitedAt).length;
+  // Sorting by votes is only a view, so the saved order can't be changed while it's on
+  const canReorder = !sortByVotes && places.length > 1;
+
+  const moveTo = (id, target) => {
+    const ids = places.map((place) => place._id);
+    const from = ids.indexOf(id);
+    if (from === -1 || target < 0 || target >= ids.length || target === from) return;
+    ids.splice(from, 1);
+    ids.splice(target, 0, id);
+    onReorder(list, ids);
+  };
 
   const finishRename = async () => {
     setRenaming(false);
@@ -101,8 +123,11 @@ const PlaceListCard = ({
           <h3 className="min-w-0 flex-1 truncate font-display text-2xl text-ink">{list.name}</h3>
         )}
         {places.length > 0 && (
-          <span className="text-sm font-extrabold tabular-nums text-ink-soft" title="Places planned into a day">
-            {planned}/{places.length} planned
+          <span
+            className="text-sm font-extrabold tabular-nums text-ink-soft"
+            title={tripStarted ? "Places the group has been to" : "Places planned into a day"}
+          >
+            {tripStarted ? `${visited}/${places.length} visited` : `${planned}/${places.length} planned`}
           </span>
         )}
         {!renaming && places.length > 1 && (
@@ -166,11 +191,42 @@ const PlaceListCard = ({
                   <li
                     key={place._id}
                     id={`place-${place._id}`}
+                    draggable={canReorder}
+                    onDragStart={(event) => {
+                      setDragId(place._id);
+                      event.dataTransfer.effectAllowed = "move";
+                      event.dataTransfer.setData("text/plain", place._id);
+                    }}
+                    onDragOver={(event) => dragId && event.preventDefault()}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      if (dragId) moveTo(dragId, index);
+                      setDragId(null);
+                    }}
+                    onDragEnd={() => setDragId(null)}
                     onMouseEnter={() => onHover(place._id)}
                     onMouseLeave={() => onHover(null)}
+                    className={cn(dragId === place._id && "opacity-50")}
                   >
                     <div className="group/row flex items-start gap-3">
-                      <NumberPin colour={colour} number={index + 1} />
+                      {canReorder ? (
+                        <button
+                          type="button"
+                          aria-label={`${place.name}, number ${index + 1}. Press up or down to move it.`}
+                          title="Drag to reorder"
+                          onKeyDown={(event) => {
+                            if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+                              event.preventDefault();
+                              moveTo(place._id, index + (event.key === "ArrowUp" ? -1 : 1));
+                            }
+                          }}
+                          className="cursor-grab rounded-full border-0 bg-transparent p-0 focus-visible:ring-4 focus-visible:ring-mustard active:cursor-grabbing"
+                        >
+                          <NumberPin colour={colour} number={index + 1} />
+                        </button>
+                      ) : (
+                        <NumberPin colour={colour} number={index + 1} />
+                      )}
                       <div
                         className={cn(
                           "flex min-w-0 flex-1 items-center gap-3 rounded-2xl bg-paper py-2 pl-4 pr-2 ring-2 transition",
@@ -182,7 +238,9 @@ const PlaceListCard = ({
                           onClick={() => onFocus(place)}
                           className="min-w-0 flex-1 border-0 bg-transparent p-0 py-1 text-left"
                         >
-                          <span className="block truncate font-bold text-ink">{place.name}</span>
+                          <span className={cn("block truncate font-bold", place.visitedAt ? "text-ink-soft line-through" : "text-ink")}>
+                            {place.name}
+                          </span>
                           {(place.category || place.address) && (
                             <span className="block truncate text-sm text-ink-soft">
                               {[place.category, place.address].filter(Boolean).join(" · ")}
@@ -207,6 +265,21 @@ const PlaceListCard = ({
                         </button>
                         {place.imageUrl && (
                           <img src={place.imageUrl} alt="" loading="lazy" className="hidden h-12 w-16 shrink-0 rounded-lg object-cover sm:block" />
+                        )}
+                        {tripStarted && (
+                          <button
+                            type="button"
+                            aria-pressed={Boolean(place.visitedAt)}
+                            aria-label={place.visitedAt ? `Mark ${place.name} as not visited` : `Mark ${place.name} as visited`}
+                            title={place.visitedAt ? "Visited" : "Mark as visited"}
+                            onClick={() => onVisited(place, !place.visitedAt)}
+                            className={cn(
+                              "grid h-7 w-7 shrink-0 place-items-center rounded-full border-0 bg-transparent p-0 hover:bg-lagoon-light",
+                              place.visitedAt ? "text-lagoon" : "text-ink-soft"
+                            )}
+                          >
+                            <CircleCheck size={16} className={cn(place.visitedAt && "fill-lagoon-light")} aria-hidden="true" />
+                          </button>
                         )}
                         <button
                           type="button"
@@ -260,7 +333,18 @@ const PlaceListCard = ({
                         )}
                       </div>
                     </div>
-                    {open && <PlaceDetails place={place} members={members} onSaveNotes={onSaveNotes} />}
+                    {open && (
+                      <PlaceDetails
+                        place={place}
+                        members={members}
+                        lists={lists}
+                        onSaveNotes={onSaveNotes}
+                        onMove={onMove}
+                        onMoveBy={canReorder ? (step) => moveTo(place._id, index + step) : null}
+                        position={{ index, count: places.length }}
+                        onAddNearby={(other) => onAdd(list, other)}
+                      />
+                    )}
                     {legs?.[index] && (
                       <p className="ml-10 mt-1.5 flex items-center gap-1.5 text-xs font-bold text-ink-soft">
                         <Footprints size={13} aria-hidden="true" />
@@ -279,7 +363,13 @@ const PlaceListCard = ({
             near={near}
             onPick={(place) => onAdd(list, place)}
           />
-          <Recommendations places={suggestions} loading={recommendationsLoading} onAdd={(place) => onAdd(list, place)} />
+          <Recommendations
+            places={suggestions}
+            loading={recommendationsLoading}
+            preferred={preferred}
+            preferredFor={preferredFor}
+            onAdd={(place) => onAdd(list, place)}
+          />
         </>
       )}
     </article>

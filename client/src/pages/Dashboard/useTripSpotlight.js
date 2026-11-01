@@ -5,10 +5,10 @@ import { API_URL } from "../../config";
 import { idOf } from "../Trips/expenseMath";
 import { getToken } from "../../api/session";
 
-const EMPTY = { events: null, checklist: null, expenses: null };
+const EMPTY = { events: null, checklist: null, places: null, expenses: null };
 
-// Extra detail for the trip the dashboard features: its events and checklist, plus its
-// expenses while the trip is under way. Each part is a nice-to-have, so a request that
+// Extra detail for the trip the dashboard features: its events, checklist and saved
+// places, plus its expenses while the trip is under way. Each part is a nice-to-have, so a request that
 // fails just leaves that part null and the card shows less.
 export default function useTripSpotlight(tripId, { withExpenses = false } = {}) {
   const [spotlight, setSpotlight] = useState(EMPTY);
@@ -27,9 +27,10 @@ export default function useTripSpotlight(tripId, { withExpenses = false } = {}) 
     Promise.all([
       get(`/api/events/trip/${tripId}`),
       get(`/api/checklist/trip/${tripId}`),
+      get(`/api/places/trip/${tripId}`),
       withExpenses ? get(`/api/expenses/trip/${tripId}`) : null,
-    ]).then(([events, checklist, expenses]) => {
-      if (!cancelled) setSpotlight({ events, checklist, expenses: expenses?.expenses ?? null });
+    ]).then(([events, checklist, places, expenses]) => {
+      if (!cancelled) setSpotlight({ events, checklist, places: places?.places ?? null, expenses: expenses?.expenses ?? null });
     });
 
     return () => {

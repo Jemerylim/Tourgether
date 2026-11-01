@@ -35,7 +35,7 @@ exports.getPlacesByTrip = async (req, res) => {
         { new: true }
       )) || (await Trip.findById(trip._id));
     }
-    const places = await Place.find({ trip: trip._id }).sort({ createdAt: 1 });
+    const places = await Place.find({ trip: trip._id }).sort({ order: 1, createdAt: 1 });
     res.status(200).json({
       success: true,
       data: { lists: trip.placeLists, destination: trip.destination, places },
@@ -97,6 +97,27 @@ exports.deleteList = async (req, res) => {
   }
 };
 
+// Put a list's places in a new order. `placeIds` lists every place on it, first first.
+exports.reorderList = async (req, res) => {
+  const placeIds = (req.body.placeIds || []).map(String);
+  try {
+    const trip = await loadTripForMember(req, res, req.params.tripId);
+    if (!trip) return;
+    const list = findList(trip, req.params.listId);
+    if (!list) return res.status(404).json({ success: false, message: 'List not found' });
+    const onList = (await Place.find({ trip: trip._id, list: list._id }).select('_id')).map((place) => String(place._id));
+    if (placeIds.length !== onList.length || new Set(placeIds).size !== placeIds.length || placeIds.some((id) => !onList.includes(id))) {
+      return badRequest(res, 'The list changed while you were sorting it. Refresh and try again.');
+    }
+    await Place.bulkWrite(
+      placeIds.map((id, index) => ({ updateOne: { filter: { _id: id }, update: { $set: { order: index + 1 } } } }))
+    );
+    res.status(200).json({ success: true, message: 'List reordered' });
+  } catch (error) {
+    sendError(res, 'Error reordering the list', error);
+  }
+};
+
 // Set where the trip is. `null` clears it.
 exports.setDestination = async (req, res) => {
   const { destination } = req.body;
@@ -142,9 +163,11 @@ exports.createPlace = async (req, res) => {
     }
 
     const imageUrl = String(req.body.imageUrl || '');
+    const last = await Place.findOne({ trip: trip._id, list: list._id }).sort({ order: -1 }).select('order');
     const place = await Place.create({
       trip: trip._id,
       list: list._id,
+      order: (last?.order ?? (await Place.countDocuments({ trip: trip._id, list: list._id }))) + 1,
       name,
       address: req.body.address,
       category: req.body.category,
@@ -174,13 +197,25 @@ const loadPlace = async (req, res) => {
   return trip ? { place, trip } : null;
 };
 
-// Change a saved place's notes
+// Change a saved place: its `notes`, `visited` (true/false), or `listId` to move it to
+// the end of another of the trip's lists
 exports.updatePlace = async (req, res) => {
   try {
     const loaded = await loadPlace(req, res);
     if (!loaded) return;
-    const { place } = loaded;
+    const { place, trip } = loaded;
     if (req.body.notes !== undefined) place.notes = String(req.body.notes).slice(0, 500);
+    if (req.body.visited !== undefined) place.visitedAt = req.body.visited ? new Date() : null;
+    if (req.body.listId !== undefined && String(req.body.listId) !== String(place.list)) {
+      const list = findList(trip, req.body.listId);
+      if (!list) return res.status(404).json({ success: false, message: 'List not found' });
+      if (place.sourceId && (await Place.exists({ trip: trip._id, list: list._id, sourceId: place.sourceId }))) {
+        return badRequest(res, `${place.name} is already in ${list.name}`);
+      }
+      const last = await Place.findOne({ trip: trip._id, list: list._id }).sort({ order: -1 }).select('order');
+      place.list = list._id;
+      place.order = (last?.order ?? 0) + 1;
+    }
     await place.save();
     res.status(200).json({ success: true, data: place });
   } catch (error) {

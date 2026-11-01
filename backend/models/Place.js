@@ -58,6 +58,16 @@ const placeSchema = new mongoose.Schema({
     maxlength: 500,
     default: '',
   },
+  // Position in its list, lowest first. Places saved before ordering existed have none
+  // and fall back to when they were added.
+  order: {
+    type: Number,
+  },
+  // When the group ticked it off on the trip
+  visitedAt: {
+    type: Date,
+    default: null,
+  },
   // Tips for the group, e.g. "book ahead" or "cash only"
   notes: {
     type: String,

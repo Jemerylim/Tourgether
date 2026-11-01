@@ -4,15 +4,19 @@ import { placeGroup } from "../../../lib/places";
 import { cn } from "../../../lib/utils";
 
 // Sideways strip of sights near the trip that aren't on this list yet, each with a +
-// to save it. Scroll-snaps on touch; the arrow pages it on desktop.
-const Recommendations = ({ places, loading, onAdd }) => {
+// to save it. Scroll-snaps on touch; the arrow pages it on desktop. `preferred` ranks
+// the groups (see preferredGroups) so what suits the travellers comes first, and
+// `preferredFor` names whose styles those are.
+const Recommendations = ({ places, loading, preferred = [], preferredFor = "", onAdd }) => {
   const [open, setOpen] = useState(true);
   const [strip, setStrip] = useState(null);
   const [group, setGroup] = useState("All");
   if (!loading && places.length === 0) return null;
 
-  const groups = ["All", ...new Set(places.map(placeGroup))];
-  const shown = group === "All" || !groups.includes(group) ? places : places.filter((place) => placeGroup(place) === group);
+  const rank = (name) => (preferred.includes(name) ? preferred.indexOf(name) : preferred.length);
+  const ranked = [...places].sort((a, b) => rank(placeGroup(a)) - rank(placeGroup(b)));
+  const groups = ["All", ...[...new Set(places.map(placeGroup))].sort((a, b) => rank(a) - rank(b))];
+  const shown = group === "All" || !groups.includes(group) ? ranked : ranked.filter((place) => placeGroup(place) === group);
 
   return (
     <div className="mt-3">
@@ -25,6 +29,9 @@ const Recommendations = ({ places, loading, onAdd }) => {
         <ChevronDown size={16} className={cn("transition-transform", !open && "-rotate-90")} aria-hidden="true" />
         Recommended places
       </button>
+      {open && preferredFor && !loading && (
+        <p className="mt-1 text-xs text-ink-soft">Ordered for your group: {preferredFor}</p>
+      )}
       {open && !loading && groups.length > 2 && (
         <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Filter recommendations">
           {groups.map((name) => (

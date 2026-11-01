@@ -138,9 +138,9 @@ const fromOverpass = async (center, radius, limit) => {
 const SIGHT_WORDS =
   /\b(museum|temple|beach|monument|memorial|park|palace|waterfalls?|falls|mountain|volcano|lake|island|market|garden|zoo|aquarium|cathedral|church|mosque|shrine|pagoda|castle|fort|fortress|tower|bridge|gallery|square|rock|cave|cliff|bay|viewpoint|reserve|landmark|statue|ruins?|heritage|attraction)\b/i;
 
-// Fallback when Overpass is down: geotagged English Wikipedia articles within 10 km
-// (the API's limit), nearest first, kept to sights by their short description
-const fromWikipedia = async ({ lat, lng }, limit) => {
+// Fallback when Overpass is down: geotagged English Wikipedia articles within `radius`
+// metres (10 km is the API's limit), nearest first, kept to sights by their short description
+const fromWikipedia = async ({ lat, lng }, limit, radius = 10000) => {
   const { data } = await axios.get("https://en.wikipedia.org/w/api.php", {
     params: {
       action: "query",
@@ -149,7 +149,7 @@ const fromWikipedia = async ({ lat, lng }, limit) => {
       origin: "*",
       generator: "geosearch",
       ggscoord: `${lat}|${lng}`,
-      ggsradius: 10000,
+      ggsradius: Math.min(radius, 10000),
       ggslimit: 50,
       prop: "coordinates|pageimages|description",
       colimit: 50,
@@ -273,6 +273,7 @@ export const mapsLink = ({ lat, lng }) => `https://www.google.com/maps/search/?a
 
 // Rough grouping of a recommendation, for the filter chips
 const GROUPS = [
+  ["Food", /\b(restaurant|cafe|café|bar|pub|bakery|coffee|eatery|food court)\b/i],
   ["Nature", /\b(beach|peak|waterfalls?|falls|volcano|park|nature|reserve|lake|garden|island|cave|cliff|bay|mountain|viewpoint|rock)\b/i],
   ["Culture", /\b(museum|gallery|temple|church|cathedral|mosque|shrine|pagoda|castle|fort|fortress|palace|monument|memorial|historic|ruins?|heritage|tower|statue|square|bridge)\b/i],
   ["Fun", /\b(zoo|theme park|aquarium|attraction|market)\b/i],
@@ -280,6 +281,89 @@ const GROUPS = [
 export const placeGroup = (place) => {
   const text = `${place.category || ""} ${place.description || ""}`;
   return GROUPS.find(([, pattern]) => pattern.test(text))?.[0] || "Other";
+};
+
+// Restaurants and cafes within `span` degrees (about 110 km per degree) of `center`,
+// from Nominatim. Asked one after the other to stay inside its one-request-a-second
+// policy, and cached for the browser session.
+const FOOD_KINDS = [
+  ["restaurant", "Restaurant"],
+  ["cafe", "Cafe"],
+];
+export const foodPlaces = async ({ lat, lng }, { span = 0.03, limit = 8 } = {}) => {
+  const cacheKey = `food:${lat.toFixed(3)},${lng.toFixed(3)},${span}`;
+  const cached = readCache(cacheKey);
+  if (cached) return cached;
+
+  const found = [];
+  for (const [amenity, label] of FOOD_KINDS) {
+    const { data } = await axios.get("https://nominatim.openstreetmap.org/search", {
+      params: {
+        amenity,
+        viewbox: [lng - span, lat + span, lng + span, lat - span].join(","),
+        bounded: 1,
+        format: "jsonv2",
+        limit: limit,
+        extratags: 1,
+        "accept-language": "en",
+      },
+      timeout: 10000,
+    });
+    data
+      .filter((item) => item.name)
+      .forEach((item) => {
+        const cuisine = titleCase((item.extratags?.cuisine || "").split(";")[0]);
+        found.push({
+          sourceId: `${item.osm_type[0].toUpperCase()}${item.osm_id}`,
+          name: item.name,
+          address: item.display_name.split(", ").slice(1, 4).join(", "),
+          category: cuisine ? `${label} · ${cuisine}` : label,
+          lat: Number(item.lat),
+          lng: Number(item.lon),
+        });
+      });
+  }
+  const places = found.slice(0, limit * FOOD_KINDS.length);
+  writeCache(cacheKey, places);
+  return places;
+};
+
+// Sights within about 1.5 km and places to eat within about 1 km of a saved place, for
+// filling a day around it. Whichever source answers is used.
+export const nearbyPlaces = async (place) => {
+  const [sights, food] = await Promise.allSettled([
+    fromWikipedia(place, 5, 1500),
+    foodPlaces(place, { span: 0.009, limit: 3 }),
+  ]);
+  if (sights.status === "rejected" && food.status === "rejected") throw sights.reason;
+  return [...(sights.value || []), ...(food.value || [])].filter(
+    (other) => other.sourceId !== place.sourceId && other.name !== place.name
+  );
+};
+
+// Which recommendation groups suit each travel style (see lib/travelStyles)
+const STYLE_GROUPS = {
+  beach: ["Nature"],
+  nature: ["Nature"],
+  adventure: ["Nature", "Fun"],
+  relax: ["Nature", "Food"],
+  food: ["Food"],
+  culture: ["Culture"],
+  city: ["Culture", "Food", "Fun"],
+  budget: ["Fun"],
+  luxury: ["Food"],
+};
+
+// Recommendation groups ranked by how many of the trip's members' travel styles point to
+// them, best first. Empty when nobody has picked any styles.
+export const preferredGroups = (members) => {
+  const scores = new Map();
+  members.forEach((member) =>
+    (member.travelStyles || []).forEach((style) =>
+      (STYLE_GROUPS[style] || []).forEach((group) => scores.set(group, (scores.get(group) || 0) + 1))
+    )
+  );
+  return [...scores.entries()].sort((a, b) => b[1] - a[1]).map(([group]) => group);
 };
 
 // Middle of a set of places, for centring recommendations when no destination is set

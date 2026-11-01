@@ -6,7 +6,18 @@ import ConfirmDialog from "../../components/Modal/ConfirmDialog";
 import { useToast } from "../../components/Toast/Toast";
 import { API_URL } from "../../config";
 import { apiErrorMessage } from "../../lib/apiError";
-import { centreOf, listColour, recommendedPlaces, shortestOrder, walkingRoute } from "../../lib/places";
+import QuickStart from "../../components/PageState/QuickStart";
+import {
+  centreOf,
+  foodPlaces,
+  listColour,
+  preferredGroups,
+  recommendedPlaces,
+  shortestOrder,
+  walkingRoute,
+} from "../../lib/places";
+import { TRAVEL_STYLES } from "../../lib/travelStyles";
+import { isHappeningNow, isPast } from "../../lib/trips";
 import TripMap from "./TripMap";
 import EventFormModal from "./trip/EventFormModal";
 import DayPlan, { DAY_COLOUR } from "./places/DayPlan";
@@ -17,6 +28,9 @@ import PlacePollModal from "./places/PlacePollModal";
 import { dailyForecast } from "../../lib/weather";
 import { eventsOn, retime, scheduleByPlace, suggestSlot, tripDays } from "./places/days";
 import useWalkingRoutes from "./places/useWalkingRoutes";
+
+// One-tap list names for a trip that only has the default list so far
+const STARTER_LISTS = ["Food & drink", "Must-see", "Beaches", "Day trips", "Nightlife", "Shopping"];
 
 // Wanderlog-style place lists beside a map: named lists ("Restaurants", "Beaches") of
 // real places, numbered and coloured to match their pins, with nearby sights suggested
@@ -67,11 +81,12 @@ const TripPlaces = ({ trip, members = [], userId, isOrganiser, onEventsChanged }
     let cancelled = false;
     const [lat, lng] = anchorKey.split(",").map(Number);
     setRecommendationsLoading(true);
-    recommendedPlaces({ lat, lng })
-      .then((found) => !cancelled && setRecommendations(found))
-      .catch((error) => {
-        console.error("Error fetching recommended places:", error);
-        if (!cancelled) setRecommendations([]);
+    // Sights and places to eat come from different services, so one failing still
+    // leaves the other
+    Promise.allSettled([recommendedPlaces({ lat, lng }), foodPlaces({ lat, lng })])
+      .then(([sights, food]) => {
+        if (sights.status === "rejected") console.error("Error fetching recommended places:", sights.reason);
+        if (!cancelled) setRecommendations([...(sights.value || []), ...(food.value || [])]);
       })
       .finally(() => !cancelled && setRecommendationsLoading(false));
     return () => {
@@ -104,18 +119,35 @@ const TripPlaces = ({ trip, members = [], userId, isOrganiser, onEventsChanged }
     };
   }, [weatherKey]);
 
-  // Each list in the order its places were added, or by must-do votes when switched on
+  // Each list in its saved order (places from before ordering existed come first, by
+  // when they were added, as the server sorts them), or by must-do votes when switched on
   const placesByList = useMemo(
     () =>
       new Map(
         lists.map((list) => {
-          const own = places.filter((place) => place.list === list._id);
+          const own = places
+            .filter((place) => place.list === list._id)
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || new Date(a.createdAt) - new Date(b.createdAt));
           if (sortedLists.has(list._id)) own.sort((a, b) => (b.votes?.length || 0) - (a.votes?.length || 0));
           return [list._id, own];
         })
       ),
     [lists, places, sortedLists]
   );
+
+  // Recommendations lead with what the group's travel styles point to
+  const preferred = useMemo(() => preferredGroups(members), [members]);
+  const preferredFor = useMemo(() => {
+    const counts = new Map();
+    members.forEach((member) => (member.travelStyles || []).forEach((style) => counts.set(style, (counts.get(style) || 0) + 1)));
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([style]) => TRAVEL_STYLES.find((item) => item.value === style)?.label)
+      .filter(Boolean)
+      .join(", ");
+  }, [members]);
+  const tripStarted = Boolean(trip.startDate) && (isHappeningNow(trip) || isPast(trip));
   const routes = useWalkingRoutes([
     ...lists.map((list) => ({ id: list._id, stops: placesByList.get(list._id) || [] })),
     { id: "day", stops: dayPlaced.map((stop) => stop.place) },
@@ -148,6 +180,7 @@ const TripPlaces = ({ trip, members = [], userId, isOrganiser, onEventsChanged }
     .map((place) => ({ ...place, listName: lists.find((list) => list._id === place.list)?.name || "" }));
 
   const near = destination || centreOf(places) || undefined;
+  const starterLists = STARTER_LISTS.filter((name) => !lists.some((list) => list.name.toLowerCase() === name.toLowerCase()));
 
   const handleAdd = async (list, place) => {
     try {
@@ -173,15 +206,52 @@ const TripPlaces = ({ trip, members = [], userId, isOrganiser, onEventsChanged }
     }
   };
 
-  const handleCreateList = async (event) => {
-    event.preventDefault();
-    if (!newList.trim()) return;
+  const createList = async (name) => {
     try {
-      const { data } = await axios.post(`${API_URL}/api/places/trip/${trip._id}/lists`, { name: newList });
+      const { data } = await axios.post(`${API_URL}/api/places/trip/${trip._id}/lists`, { name });
       setLists((prev) => [...prev, data.data]);
-      setNewList("");
+      return true;
     } catch (error) {
       showToast(apiErrorMessage(error, "Couldn't add that list"), "error");
+      return false;
+    }
+  };
+
+  const handleCreateList = async (event) => {
+    event.preventDefault();
+    if (newList.trim() && (await createList(newList))) setNewList("");
+  };
+
+  // Shown straight away, put back if the server says no
+  const handleReorder = async (list, ids) => {
+    const before = places;
+    setPlaces((prev) => prev.map((place) => (ids.includes(place._id) ? { ...place, order: ids.indexOf(place._id) + 1 } : place)));
+    try {
+      await axios.put(`${API_URL}/api/places/trip/${trip._id}/lists/${list._id}/order`, { placeIds: ids });
+    } catch (error) {
+      setPlaces(before);
+      showToast(apiErrorMessage(error, "Couldn't reorder that list"), "error");
+    }
+  };
+
+  const handleMove = async (place, list) => {
+    try {
+      const { data } = await axios.put(`${API_URL}/api/places/${place._id}`, { listId: list._id });
+      replacePlace(data.data);
+      showToast(`${place.name} moved to ${list.name}`, "success");
+    } catch (error) {
+      showToast(apiErrorMessage(error, "Couldn't move that place"), "error");
+    }
+  };
+
+  const handleVisited = async (place, visited) => {
+    replacePlace({ ...place, visitedAt: visited ? new Date().toISOString() : null });
+    try {
+      const { data } = await axios.put(`${API_URL}/api/places/${place._id}`, { visited });
+      replacePlace(data.data);
+    } catch (error) {
+      replacePlace(place);
+      showToast(apiErrorMessage(error, "Couldn't save that"), "error");
     }
   };
 
@@ -396,17 +466,21 @@ const TripPlaces = ({ trip, members = [], userId, isOrganiser, onEventsChanged }
                 <PlaceListCard
                   key={list._id}
                   list={list}
+                  lists={lists}
                   colour={listColour(index)}
                   places={placesByList.get(list._id) || []}
                   legs={routes[list._id]?.legs}
                   schedule={schedule}
                   recommendations={recommendations}
                   recommendationsLoading={recommendationsLoading}
+                  preferred={preferred}
+                  preferredFor={preferredFor}
                   near={near}
                   members={members}
                   userId={userId}
                   isOrganiser={isOrganiser}
                   canPlan={canPlan}
+                  tripStarted={tripStarted}
                   sortByVotes={sortedLists.has(list._id)}
                   activeId={hoveredId}
                   onHover={setHoveredId}
@@ -420,6 +494,9 @@ const TripPlaces = ({ trip, members = [], userId, isOrganiser, onEventsChanged }
                   onSaveNotes={handleSaveNotes}
                   onToggleSort={() => toggleSort(list)}
                   onAskGroup={setPollList}
+                  onMove={handleMove}
+                  onVisited={handleVisited}
+                  onReorder={handleReorder}
                 />
               ))}
 
@@ -443,6 +520,9 @@ const TripPlaces = ({ trip, members = [], userId, isOrganiser, onEventsChanged }
                   Add list
                 </button>
               </form>
+              {starterLists.length > 0 && lists.length <= 2 && (
+                <QuickStart label="Start a list" suggestions={starterLists} onPick={createList} />
+              )}
             </>
           )}
         </div>

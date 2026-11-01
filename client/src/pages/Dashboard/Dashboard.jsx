@@ -102,12 +102,13 @@ const TripGlance = ({ trip, userId, events, checklist }) => {
 
 // The first few things worth doing on a new trip, ticked off as the group does them.
 // Gone once they're all done.
-const SetupCard = ({ trip, events, checklist }) => {
+const SetupCard = ({ trip, events, checklist, places }) => {
   const location = useLocation();
   if (!events || !checklist) return null;
   const steps = [
     { label: "Lock in the dates", done: Boolean(trip.startDate && trip.endDate), to: `/trip/${trip._id}?section=dates` },
     { label: "Invite your travel group", done: peopleOn(trip).length > 1, to: `/trip/${trip._id}?section=calendar` },
+    { label: "Save places you want to see", done: Boolean(places?.length), to: `/trip/${trip._id}?section=places` },
     { label: "Add the first event", done: events.length > 0, to: `/trip/${trip._id}?section=calendar` },
     { label: "Start a packing list", done: checklist.length > 0, to: `/trip/${trip._id}?section=lists` },
   ];
@@ -223,7 +224,7 @@ const Dashboard = () => {
   const { upcoming, past } = splitTrips(trips);
   const [next, ...others] = upcoming;
   const live = Boolean(next) && isHappeningNow(next);
-  const { events, checklist, expenses } = useTripSpotlight(next?._id, { withExpenses: live });
+  const { events, checklist, places, expenses } = useTripSpotlight(next?._id, { withExpenses: live });
 
   const tripCard = (trip, details) => (
     <Card
@@ -307,7 +308,7 @@ const Dashboard = () => {
 
         {others.length === 0 && (
           <div className="mt-8 grid items-start gap-6 md:grid-cols-2">
-            <SetupCard trip={next} events={events} checklist={checklist} />
+            <SetupCard trip={next} events={events} checklist={checklist} places={places} />
             <NewTripTile state={fromHere(location, "Dashboard")} className="h-full" />
           </div>
         )}
@@ -315,7 +316,7 @@ const Dashboard = () => {
         {others.length > 0 && (
           <>
             <div className="mt-8">
-              <SetupCard trip={next} events={events} checklist={checklist} />
+              <SetupCard trip={next} events={events} checklist={checklist} places={places} />
             </div>
             <h2 className="mb-6 mt-14 font-display text-2xl text-ink">Also coming up</h2>
             <div className="grid gap-8 xl:grid-cols-2">

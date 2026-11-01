@@ -4,6 +4,7 @@ const {
   createList,
   renameList,
   deleteList,
+  reorderList,
   setDestination,
   createPlace,
   updatePlace,
@@ -21,6 +22,7 @@ router.get('/trip/:tripId', protect, getPlacesByTrip);
 router.post('/trip/:tripId/lists', protect, createList);
 router.put('/trip/:tripId/lists/:listId', protect, renameList);
 router.delete('/trip/:tripId/lists/:listId', protect, deleteList);
+router.put('/trip/:tripId/lists/:listId/order', protect, reorderList);
 
 // Route to set where the trip is
 router.put('/trip/:tripId/destination', protect, setDestination);
