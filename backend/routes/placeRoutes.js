@@ -6,6 +6,8 @@ const {
   deleteList,
   setDestination,
   createPlace,
+  updatePlace,
+  votePlace,
   deletePlace,
 } = require('../controllers/placeController');
 const { protect } = require('../middlewares/authMiddleware');
@@ -25,6 +27,10 @@ router.put('/trip/:tripId/destination', protect, setDestination);
 
 // Route to save a place to a list
 router.post('/', protect, createPlace);
+
+// Routes to change a saved place and to mark it a must-do
+router.put('/:id', protect, updatePlace);
+router.put('/:id/vote', protect, votePlace);
 
 // Route to remove a saved place
 router.delete('/:id', protect, deletePlace);

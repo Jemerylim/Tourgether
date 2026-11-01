@@ -58,6 +58,20 @@ const placeSchema = new mongoose.Schema({
     maxlength: 500,
     default: '',
   },
+  // Tips for the group, e.g. "book ahead" or "cash only"
+  notes: {
+    type: String,
+    trim: true,
+    maxlength: 500,
+    default: '',
+  },
+  // Members who marked it a must-do
+  votes: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+  ],
   addedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

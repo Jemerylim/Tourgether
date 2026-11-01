@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const placeSnapshotSchema = require('./placeSnapshotSchema');
 
 // One choice in a poll. `votes` holds the IDs of members who picked it.
 const optionSchema = new mongoose.Schema({
@@ -18,6 +19,12 @@ const optionSchema = new mongoose.Schema({
       ref: 'User',
     },
   ],
+  // Set when the option is one of the trip's saved places, so the winner's event
+  // lands at that place
+  place: {
+    type: placeSnapshotSchema,
+    default: null,
+  },
 });
 
 // Define the Poll schema

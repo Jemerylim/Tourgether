@@ -11,7 +11,7 @@ const UNPLANNED_SHOWN = 6;
 
 // One day of the itinerary: its events in time order, the walk between each pair of
 // stops (flagged when there isn't time for it), and the saved places not planned yet
-const DayPlan = ({ day, stops, legs, unplanned, canPlan, activeId, optimising, onHover, onFocus, onPlan, onOptimise }) => {
+const DayPlan = ({ day, weather, stops, legs, unplanned, canPlan, activeId, optimising, onHover, onFocus, onPlan, onOptimise }) => {
   const [showAll, setShowAll] = useState(false);
   const placed = stops.filter((stop) => stop.place);
   let number = 0;
@@ -34,6 +34,13 @@ const DayPlan = ({ day, stops, legs, unplanned, canPlan, activeId, optimising, o
             </button>
           )}
         </div>
+        {weather && (
+          <p className="mt-1 flex items-center gap-1.5 text-sm font-bold text-ink-soft">
+            <weather.icon size={16} aria-hidden="true" />
+            {weather.label}, {weather.high}° / {weather.low}°
+            {weather.rain !== null && ` · ${weather.rain}% chance of rain`}
+          </p>
+        )}
 
         {stops.length === 0 ? (
           <p className="mt-2 text-ink-soft">

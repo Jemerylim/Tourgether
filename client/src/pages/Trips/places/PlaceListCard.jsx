@@ -1,9 +1,24 @@
 import React, { useState } from "react";
-import { CalendarCheck, CalendarPlus, ChevronDown, ExternalLink, Footprints, Pencil, Trash2, X } from "lucide-react";
+import {
+  ArrowDownWideNarrow,
+  CalendarCheck,
+  CalendarPlus,
+  ChevronDown,
+  ExternalLink,
+  Footprints,
+  Heart,
+  Info,
+  Pencil,
+  StickyNote,
+  Trash2,
+  Vote,
+  X,
+} from "lucide-react";
 import PlaceSearch from "../../../components/PlaceSearch/PlaceSearch";
 import { describeLeg, mapsLink } from "../../../lib/places";
 import { cn } from "../../../lib/utils";
 import NumberPin from "./NumberPin";
+import PlaceDetails from "./PlaceDetails";
 import Recommendations from "./Recommendations";
 
 const ROW_BUTTON =
@@ -20,9 +35,11 @@ const PlaceListCard = ({
   recommendations,
   recommendationsLoading,
   near,
+  members,
   userId,
   isOrganiser,
   canPlan,
+  sortByVotes,
   activeId,
   onHover,
   onFocus,
@@ -31,8 +48,13 @@ const PlaceListCard = ({
   onRename,
   onDelete,
   onPlan,
+  onVote,
+  onSaveNotes,
+  onToggleSort,
+  onAskGroup,
 }) => {
   const [collapsed, setCollapsed] = useState(false);
+  const [openId, setOpenId] = useState(null);
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(list.name);
   const savedIds = new Set(places.map((place) => place.sourceId).filter(Boolean));
@@ -83,6 +105,32 @@ const PlaceListCard = ({
             {planned}/{places.length} planned
           </span>
         )}
+        {!renaming && places.length > 1 && (
+          <button
+            type="button"
+            aria-pressed={sortByVotes}
+            aria-label="Sort by must-do votes"
+            title={sortByVotes ? "Sorted by votes" : "Sort by votes"}
+            onClick={onToggleSort}
+            className={cn(
+              "grid h-8 w-8 place-items-center rounded-full border-0 p-0 hover:bg-lagoon-light hover:text-ink",
+              sortByVotes ? "bg-lagoon-light text-ink" : "bg-transparent text-ink-soft"
+            )}
+          >
+            <ArrowDownWideNarrow size={15} aria-hidden="true" />
+          </button>
+        )}
+        {!renaming && places.length > 1 && (
+          <button
+            type="button"
+            aria-label={`Start a poll from ${list.name}`}
+            title="Ask the group"
+            onClick={() => onAskGroup(list)}
+            className="grid h-8 w-8 place-items-center rounded-full border-0 bg-transparent p-0 text-ink-soft hover:bg-lagoon-light hover:text-ink"
+          >
+            <Vote size={15} aria-hidden="true" />
+          </button>
+        )}
         {!renaming && (
           <button
             type="button"
@@ -111,6 +159,9 @@ const PlaceListCard = ({
             <ol className="mt-3 space-y-2">
               {places.map((place, index) => {
                 const days = schedule.get(place._id) || [];
+                const votes = place.votes || [];
+                const voted = votes.includes(userId);
+                const open = openId === place._id;
                 return (
                   <li
                     key={place._id}
@@ -137,16 +188,51 @@ const PlaceListCard = ({
                               {[place.category, place.address].filter(Boolean).join(" · ")}
                             </span>
                           )}
-                          {days.length > 0 && (
-                            <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-lagoon-light px-2 py-0.5 text-xs font-extrabold text-ink">
-                              <CalendarCheck size={12} aria-hidden="true" />
-                              {days.map((day) => `${day.number ? `Day ${day.number}` : day.date} · ${day.startTime}`).join(", ")}
+                          {(days.length > 0 || place.notes) && (
+                            <span className="mt-1 flex flex-wrap gap-1">
+                              {days.length > 0 && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-lagoon-light px-2 py-0.5 text-xs font-extrabold text-ink">
+                                  <CalendarCheck size={12} aria-hidden="true" />
+                                  {days.map((day) => `${day.number ? `Day ${day.number}` : day.date} · ${day.startTime}`).join(", ")}
+                                </span>
+                              )}
+                              {place.notes && (
+                                <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-mustard/30 px-2 py-0.5 text-xs font-bold text-ink">
+                                  <StickyNote size={12} className="shrink-0" aria-hidden="true" />
+                                  <span className="truncate">{place.notes}</span>
+                                </span>
+                              )}
                             </span>
                           )}
                         </button>
                         {place.imageUrl && (
-                          <img src={place.imageUrl} alt="" loading="lazy" className="h-12 w-16 shrink-0 rounded-lg object-cover" />
+                          <img src={place.imageUrl} alt="" loading="lazy" className="hidden h-12 w-16 shrink-0 rounded-lg object-cover sm:block" />
                         )}
+                        <button
+                          type="button"
+                          aria-pressed={voted}
+                          aria-label={voted ? `Take back your must-do vote for ${place.name}` : `Mark ${place.name} as a must-do`}
+                          title={voted ? "You want to go" : "Must-do"}
+                          onClick={() => onVote(place, !voted)}
+                          className={cn(
+                            "flex h-7 shrink-0 items-center gap-1 rounded-full border-0 bg-transparent px-1.5 text-xs font-extrabold hover:bg-lagoon-light",
+                            voted ? "text-plum" : "text-ink-soft",
+                            votes.length === 0 && !voted && "opacity-100 sm:opacity-0 sm:focus-visible:opacity-100 sm:group-hover/row:opacity-100"
+                          )}
+                        >
+                          <Heart size={14} className={cn(voted && "fill-current")} aria-hidden="true" />
+                          {votes.length > 0 && <span className="tabular-nums">{votes.length}</span>}
+                        </button>
+                        <button
+                          type="button"
+                          aria-expanded={open}
+                          aria-label={`Details for ${place.name}`}
+                          title="Details and notes"
+                          onClick={() => setOpenId(open ? null : place._id)}
+                          className={cn(ROW_BUTTON, open && "bg-lagoon-light text-ink sm:opacity-100")}
+                        >
+                          <Info size={15} aria-hidden="true" />
+                        </button>
                         {canPlan && (
                           <button
                             type="button"
@@ -174,6 +260,7 @@ const PlaceListCard = ({
                         )}
                       </div>
                     </div>
+                    {open && <PlaceDetails place={place} members={members} onSaveNotes={onSaveNotes} />}
                     {legs?.[index] && (
                       <p className="ml-10 mt-1.5 flex items-center gap-1.5 text-xs font-bold text-ink-soft">
                         <Footprints size={13} aria-hidden="true" />

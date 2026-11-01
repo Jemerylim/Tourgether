@@ -1,6 +1,7 @@
 const Poll = require('../models/Poll');
 const Trip = require('../models/Trip');
 const Event = require('../models/Event');
+const { parsePlaceSnapshot } = require('../services/placeSnapshot');
 
 const DATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_FORMAT = /^\d{2}:\d{2}$/;
@@ -55,7 +56,17 @@ const sendError = (res, message, error) => {
 // Create a poll for a trip
 exports.createPoll = async (req, res) => {
   const { tripId, question, allowMultiple = false, date = '', startTime = '', endTime = '' } = req.body;
-  const options = (req.body.options || []).map((text) => String(text).trim()).filter(Boolean);
+  // Each option is its text, or { text, place } for one of the trip's saved places
+  const choices = (req.body.options || [])
+    .map((option) => ({
+      text: String(option?.text ?? option).trim().slice(0, 100),
+      place: typeof option === 'object' ? parsePlaceSnapshot(option.place) : null,
+    }))
+    .filter((option) => option.text);
+  if (choices.some((option) => option.place === false)) {
+    return res.status(400).json({ success: false, message: 'One of those places has no location' });
+  }
+  const options = choices.map((option) => option.text);
   const uniqueOptions = [...new Set(options.map((text) => text.toLowerCase()))];
 
   if (!tripId || !question || !question.trim()) {
@@ -85,7 +96,7 @@ exports.createPoll = async (req, res) => {
     const poll = await Poll.create({
       trip: tripId,
       question: question.trim(),
-      options: options.map((text) => ({ text, addedBy: req.user._id, votes: [] })),
+      options: choices.map(({ text, place }) => ({ text, place: place || null, addedBy: req.user._id, votes: [] })),
       allowMultiple: Boolean(allowMultiple),
       createdBy: req.user._id,
       date,
@@ -227,6 +238,7 @@ exports.closePoll = async (req, res) => {
         trip: trip._id,
         title: winner.text,
         description: `Chosen by poll: ${poll.question}`,
+        place: winner.place || null,
         ...slot,
       });
       poll.event = event._id;

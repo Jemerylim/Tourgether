@@ -559,6 +559,7 @@ const Trip = () => {
             <Suspense fallback={<p className="text-ink-soft">Loading places...</p>}>
               <TripPlaces
                 trip={trip}
+                members={members}
                 userId={userId}
                 isOrganiser={isOrganiser}
                 onEventsChanged={(events) =>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "../../api/client";
 import dayjs from "dayjs";
-import { CalendarCheck, Check, Plus, Trash2, Trophy, Vote, X } from "lucide-react";
+import { CalendarCheck, Check, MapPin, Plus, Trash2, Trophy, Vote, X } from "lucide-react";
 import Avatar from "../../components/Avatar/Avatar";
 import Modal from "../../components/Modal/Modal";
 import ConfirmDialog from "../../components/Modal/ConfirmDialog";
@@ -147,7 +147,13 @@ const PollCard = ({ poll, userId, canManage, onVote, onSuggest, onClose, onDelet
                 </span>
                 <span className="relative min-w-0 flex-1">
                   <span className="block truncate font-bold text-ink">{option.text}</span>
-                  {leading && <span className="text-xs font-extrabold uppercase tracking-wide text-lagoon">Leading</span>}
+                  {option.place?.address && (
+                    <span className="flex items-center gap-1 truncate text-xs text-ink-soft">
+                      <MapPin size={12} className="shrink-0" aria-hidden="true" />
+                      <span className="truncate">{option.place.address}</span>
+                    </span>
+                  )}
+                  {leading &&<span className="text-xs font-extrabold uppercase tracking-wide text-lagoon">Leading</span>}
                 </span>
                 <span className="relative flex -space-x-1.5" aria-hidden="true">
                   {option.votes.slice(0, 4).map((voter) => (

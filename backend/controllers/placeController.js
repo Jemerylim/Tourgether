@@ -162,6 +162,47 @@ exports.createPlace = async (req, res) => {
   }
 };
 
+// Load a saved place and check the signed-in user is on its trip. Sends the error
+// response itself and returns null when the request can't go on.
+const loadPlace = async (req, res) => {
+  const place = mongoose.isValidObjectId(req.params.id) ? await Place.findById(req.params.id) : null;
+  if (!place) {
+    res.status(404).json({ success: false, message: 'Place not found' });
+    return null;
+  }
+  const trip = await loadTripForMember(req, res, place.trip);
+  return trip ? { place, trip } : null;
+};
+
+// Change a saved place's notes
+exports.updatePlace = async (req, res) => {
+  try {
+    const loaded = await loadPlace(req, res);
+    if (!loaded) return;
+    const { place } = loaded;
+    if (req.body.notes !== undefined) place.notes = String(req.body.notes).slice(0, 500);
+    await place.save();
+    res.status(200).json({ success: true, data: place });
+  } catch (error) {
+    if (error.name === 'ValidationError') return badRequest(res, error.message);
+    sendError(res, 'Error saving the place', error);
+  }
+};
+
+// Mark a place as a must-do for the signed-in user, or (with `vote: false`) take it back
+exports.votePlace = async (req, res) => {
+  try {
+    const loaded = await loadPlace(req, res);
+    if (!loaded) return;
+    const userId = req.user._id;
+    const update = req.body.vote === false ? { $pull: { votes: userId } } : { $addToSet: { votes: userId } };
+    const place = await Place.findByIdAndUpdate(loaded.place._id, update, { new: true });
+    res.status(200).json({ success: true, data: place });
+  } catch (error) {
+    sendError(res, 'Error saving the vote', error);
+  }
+};
+
 // Remove a place. Whoever saved it and the trip organiser can do this.
 exports.deletePlace = async (req, res) => {
   try {

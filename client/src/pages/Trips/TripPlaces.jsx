@@ -13,6 +13,8 @@ import DayPlan, { DAY_COLOUR } from "./places/DayPlan";
 import DayTabs from "./places/DayTabs";
 import DestinationBar from "./places/DestinationBar";
 import PlaceListCard from "./places/PlaceListCard";
+import PlacePollModal from "./places/PlacePollModal";
+import { dailyForecast } from "../../lib/weather";
 import { eventsOn, retime, scheduleByPlace, suggestSlot, tripDays } from "./places/days";
 import useWalkingRoutes from "./places/useWalkingRoutes";
 
@@ -21,7 +23,7 @@ import useWalkingRoutes from "./places/useWalkingRoutes";
 // under each list. The day tabs switch to the itinerary: one day's events at their
 // places, in time order, with the walk between each.
 // `onEventsChanged(events)` tells the trip page about events added or moved from here.
-const TripPlaces = ({ trip, userId, isOrganiser, onEventsChanged }) => {
+const TripPlaces = ({ trip, members = [], userId, isOrganiser, onEventsChanged }) => {
   const { showToast } = useToast();
   const [lists, setLists] = useState([]);
   const [places, setPlaces] = useState([]);
@@ -39,6 +41,9 @@ const TripPlaces = ({ trip, userId, isOrganiser, onEventsChanged }) => {
   const [planError, setPlanError] = useState("");
   const [optimising, setOptimising] = useState(false);
   const [proposal, setProposal] = useState(null);
+  const [sortedLists, setSortedLists] = useState(() => new Set());
+  const [pollList, setPollList] = useState(null);
+  const [forecast, setForecast] = useState(() => new Map());
   const canPlan = trip.myRole !== "viewer";
 
   useEffect(() => {
@@ -84,9 +89,32 @@ const TripPlaces = ({ trip, userId, isOrganiser, onEventsChanged }) => {
     [events]
   );
 
+  // Weather for the days close enough to forecast, at the destination
+  const weatherAt = destination || centreOf(places);
+  const weatherKey = weatherAt && days.length ? `${weatherAt.lat.toFixed(2)},${weatherAt.lng.toFixed(2)},${days[0].date},${days[days.length - 1].date}` : "";
+  useEffect(() => {
+    if (!weatherKey) return undefined;
+    let cancelled = false;
+    const [lat, lng, from, to] = weatherKey.split(",");
+    dailyForecast({ lat: Number(lat), lng: Number(lng) }, from, to)
+      .then((found) => !cancelled && setForecast(found))
+      .catch((error) => console.warn("No weather forecast:", error.message));
+    return () => {
+      cancelled = true;
+    };
+  }, [weatherKey]);
+
+  // Each list in the order its places were added, or by must-do votes when switched on
   const placesByList = useMemo(
-    () => new Map(lists.map((list) => [list._id, places.filter((place) => place.list === list._id)])),
-    [lists, places]
+    () =>
+      new Map(
+        lists.map((list) => {
+          const own = places.filter((place) => place.list === list._id);
+          if (sortedLists.has(list._id)) own.sort((a, b) => (b.votes?.length || 0) - (a.votes?.length || 0));
+          return [list._id, own];
+        })
+      ),
+    [lists, places, sortedLists]
   );
   const routes = useWalkingRoutes([
     ...lists.map((list) => ({ id: list._id, stops: placesByList.get(list._id) || [] })),
@@ -195,6 +223,60 @@ const TripPlaces = ({ trip, userId, isOrganiser, onEventsChanged }) => {
     }
   };
 
+  const replacePlace = (updated) => setPlaces((prev) => prev.map((other) => (other._id === updated._id ? updated : other)));
+
+  // Shown straight away, put back if the server says no
+  const handleVote = async (place, vote) => {
+    const votes = place.votes || [];
+    replacePlace({ ...place, votes: vote ? [...votes, userId] : votes.filter((id) => id !== userId) });
+    try {
+      const { data } = await axios.put(`${API_URL}/api/places/${place._id}/vote`, { vote });
+      replacePlace(data.data);
+    } catch (error) {
+      replacePlace(place);
+      showToast(apiErrorMessage(error, "Couldn't save your vote"), "error");
+    }
+  };
+
+  const handleSaveNotes = async (place, notes) => {
+    try {
+      const { data } = await axios.put(`${API_URL}/api/places/${place._id}`, { notes });
+      replacePlace(data.data);
+      return true;
+    } catch (error) {
+      showToast(apiErrorMessage(error, "Couldn't save the notes"), "error");
+      return false;
+    }
+  };
+
+  const toggleSort = (list) =>
+    setSortedLists((prev) => {
+      const next = new Set(prev);
+      if (next.has(list._id)) next.delete(list._id);
+      else next.add(list._id);
+      return next;
+    });
+
+  // Start a poll whose options are saved places, so the winner lands on the calendar at
+  // that place. Returns an error message for the form, or nothing when it worked.
+  const handleCreatePoll = async (question, picked) => {
+    try {
+      await axios.post(`${API_URL}/api/polls`, {
+        tripId: trip._id,
+        question,
+        options: picked.map((place) => ({
+          text: place.name.slice(0, 100),
+          place: { placeId: place._id, name: place.name, address: place.address || "", lat: place.lat, lng: place.lng },
+        })),
+      });
+      setPollList(null);
+      showToast("Poll started. Everyone can vote in Polls.", "success");
+      return "";
+    } catch (error) {
+      return apiErrorMessage(error, "Couldn't start the poll");
+    }
+  };
+
   // Open the event form for a saved place, on the day being looked at (or the first
   // day of the trip), in the next free slot of that day
   const openPlan = (place, date = day?.date || days[0]?.date || "") => {
@@ -285,13 +367,16 @@ const TripPlaces = ({ trip, userId, isOrganiser, onEventsChanged }) => {
 
   return (
     <section aria-label="Places" className="space-y-4">
-      {days.length > 0 && <DayTabs days={days} counts={eventCounts} value={day ? day.date : "lists"} onChange={setView} />}
+      {days.length > 0 && (
+        <DayTabs days={days} counts={eventCounts} forecast={forecast} value={day ? day.date : "lists"} onChange={setView} />
+      )}
 
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
         <div className="order-2 space-y-6 xl:order-1">
           {day ? (
             <DayPlan
               day={day}
+              weather={forecast.get(day.date)}
               stops={dayStops}
               legs={routes.day?.legs}
               unplanned={unplanned}
@@ -318,9 +403,11 @@ const TripPlaces = ({ trip, userId, isOrganiser, onEventsChanged }) => {
                   recommendations={recommendations}
                   recommendationsLoading={recommendationsLoading}
                   near={near}
+                  members={members}
                   userId={userId}
                   isOrganiser={isOrganiser}
                   canPlan={canPlan}
+                  sortByVotes={sortedLists.has(list._id)}
                   activeId={hoveredId}
                   onHover={setHoveredId}
                   onFocus={(place) => setFocusPin({ ...place })}
@@ -329,6 +416,10 @@ const TripPlaces = ({ trip, userId, isOrganiser, onEventsChanged }) => {
                   onRename={handleRename}
                   onDelete={setDeletingList}
                   onPlan={(place) => openPlan(place)}
+                  onVote={handleVote}
+                  onSaveNotes={handleSaveNotes}
+                  onToggleSort={() => toggleSort(list)}
+                  onAskGroup={setPollList}
                 />
               ))}
 
@@ -380,6 +471,15 @@ const TripPlaces = ({ trip, userId, isOrganiser, onEventsChanged }) => {
           trip={trip}
           errorMessage={planError}
           onSubmit={handlePlan}
+        />
+      )}
+
+      {pollList && (
+        <PlacePollModal
+          list={pollList}
+          places={placesByList.get(pollList._id) || []}
+          onClose={() => setPollList(null)}
+          onCreate={handleCreatePoll}
         />
       )}
 

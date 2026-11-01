@@ -192,6 +192,35 @@ export const recommendedPlaces = async (center, { limit = 12, radius = 25000 } =
   return places;
 };
 
+// Opening hours, website, phone and a Wikipedia blurb for a saved place, from its
+// OpenStreetMap tags via Nominatim's lookup (one request per place opened, which its
+// usage policy allows). Places without an OSM id (Wikipedia picks) get nothing.
+// Cached for the browser session.
+export const placeDetails = async (sourceId) => {
+  if (!/^[NWR]\d+$/.test(sourceId || "")) return {};
+  const cacheKey = `details:${sourceId}`;
+  const cached = readCache(cacheKey);
+  if (cached) return cached;
+
+  const { data } = await axios.get("https://nominatim.openstreetmap.org/lookup", {
+    params: { osm_ids: sourceId, format: "json", extratags: 1, "accept-language": "en" },
+    timeout: 10000,
+  });
+  const tags = data[0]?.extratags || {};
+  const website = tags.website || tags["contact:website"] || "";
+  const details = {
+    openingHours: tags.opening_hours || "",
+    // Only web links, so a tag can't point the page at anything else
+    website: /^https?:\/\//.test(website) ? website : "",
+    phone: tags.phone || tags["contact:phone"] || "",
+    cuisine: titleCase((tags.cuisine || "").split(";").join(", ")),
+    fee: tags.fee || "",
+    ...(tags.wikipedia ? await wikipediaSummary(tags.wikipedia) : {}),
+  };
+  writeCache(cacheKey, details);
+  return details;
+};
+
 // Walking routes from the OSM community's routing server (free, no key, fair use)
 const ROUTING_URL = "https://routing.openstreetmap.de/routed-foot";
 const toCoords = (points) => points.map((point) => `${point.lng.toFixed(5)},${point.lat.toFixed(5)}`).join(";");
