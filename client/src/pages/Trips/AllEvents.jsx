@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useLocation, useParams, useNavigate } from "react-router-dom";
 import axios from "../../api/client";
 import dayjs from "dayjs";
-import { CalendarDays, StickyNote } from "lucide-react";
+import { CalendarDays, MapPin, StickyNote } from "lucide-react";
+import { mapsLink } from "../../lib/places";
 import PageLayout from "../../components/PageLayout/PageLayout";
 import SaveIndicator from "../../components/SaveIndicator/SaveIndicator";
 import ConfirmDialog from "../../components/Modal/ConfirmDialog";
@@ -48,6 +49,7 @@ const AllEvents = () => {
           startTime: dayjs(`${event.date} ${event.startTime}`).format("HH:mm"),
           endTime: dayjs(`${event.date} ${event.endTime}`).format("HH:mm"),
           notes: event.notes || "",
+          place: event.place,
         }));
 
         // Group events by date
@@ -179,6 +181,20 @@ const AllEvents = () => {
                           </button>
                         )}
                       </div>
+                      {event.place && (
+                        <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ink-soft">
+                          <MapPin size={15} className="shrink-0 text-lagoon" aria-hidden="true" />
+                          <span className="font-bold text-ink">{event.place.name}</span>
+                          <a
+                            href={mapsLink(event.place)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-bold text-ink-soft underline hover:text-ink"
+                          >
+                            Directions
+                          </a>
+                        </p>
+                      )}
                       {/* Notes stay out of the way until an event has some, or someone wants to add one */}
                       {(notesState[event.id] || openNotes[event.id]) ? (
                         <>

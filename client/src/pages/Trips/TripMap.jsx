@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from "react";
-import { MapContainer, Marker, TileLayer, Tooltip, useMap } from "react-leaflet";
+import { MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -53,7 +53,7 @@ const FlyTo = ({ pin }) => {
 
 // Map of the trip's places. `pins`: [{ _id, lat, lng, name, number, colour }].
 // `activeId` is enlarged and drawn on top; `onPinClick(id)` fires when a pin is clicked.
-const TripMap = ({ pins, destination, activeId, focusPin, onPinClick, onPinHover }) => {
+const TripMap = ({ pins, routes = [], destination, activeId, focusPin, onPinClick, onPinHover }) => {
   const icons = useMemo(
     () => new Map(pins.map((pin) => [pin._id, pinIcon(pin.colour, pin.number, pin._id === activeId)])),
     [pins, activeId]
@@ -76,6 +76,9 @@ const TripMap = ({ pins, destination, activeId, focusPin, onPinClick, onPinHover
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           maxZoom={19}
         />
+        {routes.map((route) => (
+          <Polyline key={route.id} positions={route.line} pathOptions={{ color: route.colour, weight: 4, opacity: 0.7, dashArray: "2 8", lineCap: "round" }} />
+        ))}
         {pins.map((pin) => (
           <Marker
             key={pin._id}

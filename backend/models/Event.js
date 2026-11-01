@@ -32,6 +32,22 @@ const eventSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
+  // Where the event happens, when it was planned from one of the trip's saved places.
+  // A copy of the place's name and location, so the event keeps them if the place is
+  // later removed from its list.
+  place: {
+    type: new mongoose.Schema(
+      {
+        placeId: { type: mongoose.Schema.Types.ObjectId, ref: "Place" },
+        name: { type: String, trim: true, maxlength: 150, required: true },
+        address: { type: String, trim: true, maxlength: 300, default: "" },
+        lat: { type: Number, required: true, min: -90, max: 90 },
+        lng: { type: Number, required: true, min: -180, max: 180 },
+      },
+      { _id: false }
+    ),
+    default: null,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

@@ -192,6 +192,67 @@ export const recommendedPlaces = async (center, { limit = 12, radius = 25000 } =
   return places;
 };
 
+// Walking routes from the OSM community's routing server (free, no key, fair use)
+const ROUTING_URL = "https://routing.openstreetmap.de/routed-foot";
+const toCoords = (points) => points.map((point) => `${point.lng.toFixed(5)},${point.lat.toFixed(5)}`).join(";");
+
+// Walking route through `points` in order. Returns the line to draw plus distance (m)
+// and time (s) for each leg, or null.
+const routeCache = new Map();
+export const walkingRoute = async (points, { signal } = {}) => {
+  const coords = toCoords(points);
+  if (routeCache.has(coords)) return routeCache.get(coords);
+  const { data } = await axios.get(`${ROUTING_URL}/route/v1/foot/${coords}`, {
+    params: { overview: "full", geometries: "geojson" },
+    timeout: 10000,
+    signal,
+  });
+  const route = data.routes?.[0];
+  const result = route
+    ? {
+        line: route.geometry.coordinates.map(([lng, lat]) => [lat, lng]),
+        legs: route.legs.map((leg) => ({ distance: leg.distance, duration: leg.duration })),
+      }
+    : null;
+  routeCache.set(coords, result);
+  return result;
+};
+
+// Shortest walking order for `points`, starting from the first and ending anywhere, as
+// indexes into `points` (e.g. [0, 2, 1, 3])
+export const shortestOrder = async (points) => {
+  const { data } = await axios.get(`${ROUTING_URL}/trip/v1/foot/${toCoords(points)}`, {
+    params: { source: "first", roundtrip: false, destination: "any", overview: "false" },
+    timeout: 15000,
+  });
+  if (!data.waypoints) throw new Error("No route found");
+  return data.waypoints
+    .map((waypoint, index) => ({ index, position: waypoint.waypoint_index }))
+    .sort((a, b) => a.position - b.position)
+    .map(({ index }) => index);
+};
+
+// "12 min walk · 900 m"
+export const describeLeg = ({ distance, duration }) => {
+  const minutes = Math.max(1, Math.round(duration / 60));
+  const time = minutes >= 60 ? `${Math.floor(minutes / 60)} h ${minutes % 60} min` : `${minutes} min`;
+  const far = distance < 1000 ? `${Math.round(distance / 10) * 10} m` : `${(distance / 1000).toFixed(1)} km`;
+  return `${time} walk · ${far}`;
+};
+
+export const mapsLink = ({ lat, lng }) => `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+
+// Rough grouping of a recommendation, for the filter chips
+const GROUPS = [
+  ["Nature", /\b(beach|peak|waterfalls?|falls|volcano|park|nature|reserve|lake|garden|island|cave|cliff|bay|mountain|viewpoint|rock)\b/i],
+  ["Culture", /\b(museum|gallery|temple|church|cathedral|mosque|shrine|pagoda|castle|fort|fortress|palace|monument|memorial|historic|ruins?|heritage|tower|statue|square|bridge)\b/i],
+  ["Fun", /\b(zoo|theme park|aquarium|attraction|market)\b/i],
+];
+export const placeGroup = (place) => {
+  const text = `${place.category || ""} ${place.description || ""}`;
+  return GROUPS.find(([, pattern]) => pattern.test(text))?.[0] || "Other";
+};
+
 // Middle of a set of places, for centring recommendations when no destination is set
 export const centreOf = (places) =>
   places.length

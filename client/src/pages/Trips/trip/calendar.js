@@ -23,6 +23,8 @@ export const toCalendarEvent = (event) => ({
   calendarId: "trip",
   start: dayjs(`${event.date} ${event.startTime}`).format(CALENDAR_FORMAT),
   end: dayjs(`${event.date} ${event.endTime}`).format(CALENDAR_FORMAT),
+  // Schedule-X shows `location` in its event popup; `place` rides along for editing
+  ...(event.place && { location: event.place.name, place: event.place }),
 });
 
 // The calendar plugins live at module level, so the drag handler reaches the current

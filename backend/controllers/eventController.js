@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Event = require('../models/Event');
 const { loadTripForMember, loadTripForEditor } = require('../services/tripAccess');
 
@@ -14,16 +15,30 @@ const loadEventForMember = async (req, res, id, { forEdit = false } = {}) => {
   return trip ? event : null;
 };
 
+const isCoordinate = (value, limit) => typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= limit;
+
+// The `place` an event was planned from: undefined when the request leaves it alone,
+// null to clear it, false when it's malformed, otherwise the fields to store
+const eventPlace = (input) => {
+  if (input === undefined || input === null) return input;
+  const name = String(input.name || '').trim().slice(0, 150);
+  if (!name || !isCoordinate(input.lat, 90) || !isCoordinate(input.lng, 180)) return false;
+  return {
+    placeId: mongoose.isValidObjectId(input.placeId) ? input.placeId : undefined,
+    name,
+    address: String(input.address || '').trim().slice(0, 300),
+    lat: input.lat,
+    lng: input.lng,
+  };
+};
+
 // Create a new event
 exports.createEvent = async (req, res) => {
   const { tripId, title, date, startTime, endTime, notes: incomingNotes = "",} = req.body;
-
-  console.log("tripId:", tripId);
-  console.log("title:", title);
-  console.log("date:", date);
-  console.log("startTime:", startTime);
-  console.log("endTime:", endTime);
-  console.log("notes:", incomingNotes);
+  const place = eventPlace(req.body.place);
+  if (place === false) {
+    return res.status(400).json({ success: false, message: "That place has no location" });
+  }
 
   if (!tripId || !title || !date || !startTime || !endTime) {
     return res.status(400).json({
@@ -57,6 +72,7 @@ exports.createEvent = async (req, res) => {
       endTime,
       description: req.body.description || "",
       notes: incomingNotes,
+      place: place || null,
     });
 
     res.status(201).json({ success: true, data: event });
@@ -120,6 +136,10 @@ exports.getEvent = async (req, res) => {
 exports.updateEvent = async (req, res) => {
   const { id } = req.params;
   const { title, description, date, startTime, endTime, notes } = req.body;
+  const place = eventPlace(req.body.place);
+  if (place === false) {
+    return res.status(400).json({ success: false, message: "That place has no location" });
+  }
 
   try {
     const found = await loadEventForMember(req, res, id, { forEdit: true });
@@ -127,7 +147,7 @@ exports.updateEvent = async (req, res) => {
 
     const event = await Event.findByIdAndUpdate(
       found._id,
-      { title, description, date, startTime, endTime, notes },
+      { title, description, date, startTime, endTime, notes, place },
       { new: true, runValidators: true }
     );
 

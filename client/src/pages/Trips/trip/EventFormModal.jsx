@@ -1,13 +1,33 @@
 import React from "react";
 import dayjs from "dayjs";
+import { MapPin, X } from "lucide-react";
 import Modal from "../../../components/Modal/Modal";
 import DatePicker from "../../../components/DatePicker/DatePicker";
 import TimePicker from "../../../components/TimePicker/TimePicker";
 
-// Create or edit an event. `event` is the form's { title, date, startTime, endTime }.
-const EventFormModal = ({ open, onClose, isEditing, event, onChange, trip, errorMessage, onSubmit, onRequestDelete }) => (
-  <Modal open={open} onClose={onClose} title={isEditing ? "Edit event" : "Add event"} className="overflow-visible">
+// Create or edit an event. `event` is the form's { title, date, startTime, endTime, place },
+// where `place` is the saved place it was planned from (or null).
+const EventFormModal = ({ open, onClose, isEditing, event, onChange, trip, errorMessage, onSubmit, onRequestDelete, title }) => (
+  <Modal open={open} onClose={onClose} title={title || (isEditing ? "Edit event" : "Add event")} className="overflow-visible">
           <form onSubmit={onSubmit} className="space-y-4" noValidate>
+            {event.place && (
+              <div className="flex items-center gap-2 rounded-2xl bg-lagoon-light py-2 pl-3 pr-2">
+                <MapPin size={16} className="shrink-0 text-lagoon" aria-hidden="true" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-extrabold text-ink">{event.place.name}</span>
+                  {event.place.address && <span className="block truncate text-xs text-ink-soft">{event.place.address}</span>}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Unlink this place"
+                  title="Unlink this place"
+                  onClick={() => onChange({ ...event, place: null })}
+                  className="grid h-7 w-7 shrink-0 place-items-center rounded-full border-0 bg-transparent p-0 text-ink-soft hover:bg-white hover:text-ink"
+                >
+                  <X size={14} aria-hidden="true" />
+                </button>
+              </div>
+            )}
             <div>
               <label htmlFor="event-title" className="field-label">
                 Event

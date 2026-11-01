@@ -40,6 +40,8 @@ import {
 // The map library is large, so the Places section loads the first time it's opened
 const TripPlaces = lazy(() => import("./TripPlaces"));
 
+const EMPTY_EVENT = { title: "", date: "", startTime: "", endTime: "", place: null };
+
 const Trip = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -68,12 +70,7 @@ const Trip = () => {
   const [cover, setCover] = useState();
   const calendarBoxRef = useRef(null);
 
-  const [newEvent, setNewEvent] = useState({
-    title: "",
-    date: "",
-    startTime: "",
-    endTime: "",
-  });
+  const [newEvent, setNewEvent] = useState(EMPTY_EVENT);
 
   useEffect(() => {
     tripRef.current = trip;
@@ -96,7 +93,7 @@ const Trip = () => {
             setEditingEvent(null);
             setErrorMessage("");
             setNewEvent({
-                title: "",
+                ...EMPTY_EVENT,
                 date: start.format("YYYY-MM-DD"),
                 startTime: start.format("HH:mm"),
                 endTime: end.isSame(start, "day") ? end.format("HH:mm") : "23:59",
@@ -107,7 +104,7 @@ const Trip = () => {
             setIsEditing(false);
             setEditingEvent(null);
             setErrorMessage("");
-            setNewEvent({ title: "", date: dayjs(date).format("YYYY-MM-DD"), startTime: "", endTime: "" });
+            setNewEvent({ ...EMPTY_EVENT, date: dayjs(date).format("YYYY-MM-DD") });
             setShowCreateForm(true);
         },
         onDoubleClickEvent: (event) => {
@@ -120,6 +117,7 @@ const Trip = () => {
                 date: dayjs(event.start).format("YYYY-MM-DD"),
                 startTime: dayjs(event.start).format("HH:mm"),
                 endTime: dayjs(event.end).format("HH:mm"),
+                place: event.place || null,
               });
             setIsEditing(true);
             setShowCreateForm(true); // Show the form
@@ -274,27 +272,19 @@ const Trip = () => {
 
     try {
         if (isEditing && editingEvent) {
-            await axios.put(
+            const response = await axios.put(
                 `${API_URL}/api/events/${editingEvent.id}`,
                 {
                     title: newEvent.title,
                     date: newEvent.date,
                     startTime: newEvent.startTime,
                     endTime: newEvent.endTime,
+                    place: newEvent.place || null,
                 }
             );
 
             setSelectedDates((prev) =>
-                prev.map((event) =>
-                    event.id === editingEvent.id
-                        ? {
-                            ...event,
-                            title: newEvent.title,
-                            start: dayjs(`${newEvent.date} ${newEvent.startTime}`).format("YYYY-MM-DD HH:mm"),
-                            end: dayjs(`${newEvent.date} ${newEvent.endTime}`).format("YYYY-MM-DD HH:mm"),
-                        }
-                        : event
-                )
+                prev.map((event) => (event.id === editingEvent.id ? toCalendarEvent(response.data.data) : event))
             );
         } else {
             const response = await axios.post(
@@ -315,7 +305,7 @@ const Trip = () => {
         setShowCreateForm(false);
         setIsEditing(false);
         setEditingEvent(null);
-        setNewEvent({ title: "", date: "", startTime: "", endTime: "" });
+        setNewEvent(EMPTY_EVENT);
         setErrorMessage(""); // Clear error message
 
     } catch (err) {
@@ -338,7 +328,7 @@ const Trip = () => {
         setShowCreateForm(false);
         setIsEditing(false);
         setEditingEvent(null);
-        setNewEvent({ title: "", date: "", startTime: "", endTime: "" });
+        setNewEvent(EMPTY_EVENT);
 
         showToast("Event deleted", "success");
     } catch (err) {
@@ -440,7 +430,7 @@ const Trip = () => {
     setShowCreateForm(false);
     setIsEditing(false);
     setEditingEvent(null);
-    setNewEvent({ title: "", date: "", startTime: "", endTime: "" });
+    setNewEvent(EMPTY_EVENT);
     setErrorMessage("");
   };
 
@@ -567,7 +557,17 @@ const Trip = () => {
           )}
           {userId && section === "places" && (
             <Suspense fallback={<p className="text-ink-soft">Loading places...</p>}>
-              <TripPlaces trip={trip} userId={userId} isOrganiser={isOrganiser} />
+              <TripPlaces
+                trip={trip}
+                userId={userId}
+                isOrganiser={isOrganiser}
+                onEventsChanged={(events) =>
+                  setSelectedDates((prev) => {
+                    const byId = new Map(events.map((event) => [event._id, toCalendarEvent(event)]));
+                    return [...prev.map((event) => byId.get(event.id) || event), ...[...byId.values()].filter((event) => !prev.some((other) => other.id === event.id))];
+                  })
+                }
+              />
             </Suspense>
           )}
           {userId && section === "polls" && (
